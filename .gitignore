@@ -1,0 +1,65 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# AeroClean .gitignore
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Trained model weights (PyTorch, NCNN, ONNX, TFLite)
+weights/
+*.pt
+*.pth
+*.onnx
+*.tflite
+*.bin
+*.param
+best_ncnn_model/
+
+# Dataset images and annotations
+images/
+labels/
+
+# Inference output frames
+output/
+
+# Ultralytics training runs
+runs/
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+
+# Virtual environments
+aeroclean_env/
+venv/
+env/
+.venv/
+*_env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Jupyter checkpoints
+.ipynb_checkpoints/
+
+# Logs and temp files
+*.log
+*.tmp
+*.bak
+
+# Dataset zips (Colab uploads — not for version control)
+*.zip
+
+# Internal/private docs
+CH_README.md

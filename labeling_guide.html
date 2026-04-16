@@ -1,0 +1,1092 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>AeroClean — Labeling Guide</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden;font-family:'Segoe UI',system-ui,sans-serif;background:#f1f5f9;color:#1e293b;font-size:15px}
+
+/* ── Top bar ── */
+#topbar{position:fixed;top:0;left:0;right:0;height:56px;background:#ffffff;border-bottom:1px solid #e2e8f0;display:flex;align-items:center;padding:0 24px;z-index:200;gap:16px;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+#topbar .logo{font-weight:800;font-size:15px;color:#0f172a;letter-spacing:.04em}
+#topbar .logo span{color:#2563eb}
+#stepper{display:flex;align-items:center;gap:0;flex:1;justify-content:center}
+.step-dot{display:flex;align-items:center;gap:0;cursor:pointer}
+.step-dot .num{width:30px;height:30px;border-radius:50%;border:2px solid #e2e8f0;background:#ffffff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#94a3b8;transition:all .25s;position:relative}
+.step-dot:hover .num{border-color:#3b82f6;color:#2563eb}
+.step-dot.active .num{background:#3b82f6;border-color:#3b82f6;color:#fff}
+.step-dot.done .num{background:#10b981;border-color:#10b981;color:#fff}
+.step-dot.done .num::after{content:'✓';font-size:13px}
+.step-dot.done .num span{display:none}
+.step-line{width:32px;height:2px;background:#e2e8f0;transition:background .3s}
+.step-dot.done+.step-dot>.step-line,.step-dot.done .step-line{background:#10b981}
+.step-label{font-size:10px;color:#94a3b8;position:absolute;bottom:-18px;white-space:nowrap;left:50%;transform:translateX(-50%);font-weight:600}
+.step-dot.active .step-label{color:#2563eb}
+.step-dot.done .step-label{color:#10b981}
+#progress-ring{margin-left:auto}
+
+/* ── Viewport ── */
+#viewport{position:fixed;top:56px;left:0;right:0;bottom:64px;overflow:hidden}
+.screen{position:absolute;top:0;left:0;right:0;bottom:0;padding:32px 48px;overflow-y:auto;display:flex;flex-direction:column;opacity:0;pointer-events:none;transform:translateX(60px);transition:opacity .35s ease,transform .35s ease}
+.screen.active{opacity:1;pointer-events:all;transform:translateX(0)}
+.screen.exit-left{opacity:0;transform:translateX(-60px)}
+
+/* ── Footer ── */
+#footer{position:fixed;bottom:0;left:0;right:0;height:64px;background:#ffffff;border-top:1px solid #e2e8f0;display:flex;align-items:center;justify-content:space-between;padding:0 32px;box-shadow:0 -1px 3px rgba(0,0,0,.04)}
+.btn{border:none;border-radius:8px;padding:10px 22px;font-size:14px;font-weight:600;cursor:pointer;transition:all .15s}
+.btn-ghost{background:#f1f5f9;color:#64748b;border:1px solid #e2e8f0}
+.btn-ghost:hover{background:#e2e8f0;color:#334155}
+.btn-primary{background:#3b82f6;color:#fff}
+.btn-primary:hover{background:#2563eb}
+.btn:disabled{opacity:.35;cursor:not-allowed}
+#step-counter{font-size:13px;color:#94a3b8;font-weight:600}
+
+/* ── Typography ── */
+h1{font-size:28px;font-weight:800;color:#0f172a;margin-bottom:8px;line-height:1.2}
+h1 .accent{color:#2563eb}
+h2{font-size:19px;font-weight:700;color:#1e293b;margin-bottom:6px}
+h3{font-size:13px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.1em;margin:20px 0 10px}
+p{color:#64748b;line-height:1.65;margin-bottom:10px}
+code{font-family:'Cascadia Code','Fira Code',monospace;font-size:12.5px;background:#f1f5f9;border:1px solid #e2e8f0;border-radius:4px;padding:1px 6px;color:#2563eb}
+kbd{background:#f1f5f9;border:1px solid #cbd5e1;border-bottom-width:2px;border-radius:4px;padding:2px 7px;font-size:12px;color:#334155;font-family:inherit}
+
+/* ── Cards & grid ── */
+.card{background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,.04)}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+.grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+
+/* ── Callouts ── */
+.callout{border-radius:10px;padding:12px 16px;display:flex;gap:12px;font-size:13.5px;margin:12px 0}
+.callout .icon{font-size:18px;flex-shrink:0}
+.callout.info{background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8}
+.callout.warn{background:#fffbeb;border:1px solid #fde68a;color:#92400e}
+.callout.tip{background:#f0fdf4;border:1px solid #bbf7d0;color:#15803d}
+.callout.venv{background:#faf5ff;border:1px solid #e9d5ff;color:#7c3aed}
+.callout strong{color:inherit}
+
+/* ── Code blocks (kept dark for readability) ── */
+.code-block{background:#1e293b;border:1px solid #334155;border-radius:10px;overflow:hidden;margin:10px 0}
+.code-header{display:flex;align-items:center;justify-content:space-between;padding:8px 14px;background:#0f172a;border-bottom:1px solid #334155}
+.code-lang{font-size:10.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#64748b}
+.copy-btn{font-size:11px;color:#94a3b8;background:#1e293b;border:1px solid #334155;border-radius:5px;padding:2px 10px;cursor:pointer;transition:all .15s}
+.copy-btn:hover{background:#334155;color:#e2e8f0}
+.copy-btn.ok{color:#34d399;border-color:#34d39955;background:#0f2a1f}
+pre{padding:14px 16px;font-family:'Cascadia Code','Fira Code',monospace;font-size:12.5px;line-height:1.6;color:#e2e8f0;overflow-x:auto;tab-size:2;white-space:pre}
+.cm{color:#6a737d;font-style:italic}.kw{color:#f97583}.str{color:#9ecbff}.fn{color:#b392f0}.num{color:#79b8ff}.flag{color:#ffab70}.ok-text{color:#34d399}
+
+/* ── OS tabs ── */
+.os-tabs{display:flex;gap:0;border-bottom:1px solid #334155;margin-bottom:0;background:#0f172a}
+.os-tab{padding:8px 18px;font-size:13px;font-weight:600;cursor:pointer;color:#64748b;border-bottom:2px solid transparent;transition:all .15s}
+.os-tab:hover{color:#94a3b8}
+.os-tab.active{color:#60a5fa;border-bottom-color:#3b82f6}
+.os-panel{display:none}.os-panel.active{display:block}.os-panel pre{min-height:72px}.venv-followup{display:flex;align-items:flex-start;gap:14px;flex-wrap:wrap;margin-top:14px}.venv-followup .code-block{margin:0}.venv-followup .mini-note{color:#475569;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px}
+
+/* ── Checklist ── */
+.checklist{list-style:none;display:flex;flex-direction:column;gap:8px}
+.check-item{display:flex;align-items:flex-start;gap:12px;padding:10px 14px;background:#ffffff;border:1px solid #e2e8f0;border-radius:8px;cursor:pointer;transition:all .15s;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+.check-item:hover{border-color:#cbd5e1;box-shadow:0 2px 4px rgba(0,0,0,.06)}
+.check-item.checked{opacity:.65;background:#f0fdf4;border-color:#bbf7d0}
+.check-item input[type=checkbox]{width:16px;height:16px;cursor:pointer;accent-color:#3b82f6;margin-top:2px;flex-shrink:0}
+.check-item label{cursor:pointer;color:#334155;font-size:13.5px;line-height:1.5}
+.check-item.checked label{text-decoration:line-through;color:#94a3b8}
+
+/* ── Dep table ── */
+.dep-table{width:100%;border-collapse:collapse;font-size:13px}
+.dep-table thead tr{background:#f8fafc;border-bottom:2px solid #e2e8f0}
+.dep-table th{text-align:left;padding:9px 12px;font-size:10.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#94a3b8}
+.dep-table td{padding:9px 12px;border-bottom:1px solid #f1f5f9;color:#64748b;vertical-align:top}
+.dep-table tr:last-child td{border-bottom:none}
+.dep-table tr:hover td{background:#f8fafc}
+.dep-table td strong{color:#1e293b}
+.badge-req{background:#fee2e2;color:#dc2626;font-size:10px;font-weight:700;padding:1px 7px;border-radius:4px;text-transform:uppercase}
+.badge-opt{background:#dcfce7;color:#16a34a;font-size:10px;font-weight:700;padding:1px 7px;border-radius:4px;text-transform:uppercase}
+
+/* ── Command builder ── */
+.cmd-builder{background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;padding:18px;box-shadow:0 1px 3px rgba(0,0,0,.04)}
+.cmd-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+select,input[type=number]{background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;color:#1e293b;padding:7px 10px;font-size:13px;cursor:pointer}
+select:focus,input[type=number]:focus{outline:2px solid #3b82f633;border-color:#3b82f6}
+.cmd-output{background:#1e293b;border:1px solid #334155;border-radius:8px;padding:12px 16px;font-family:'Cascadia Code','Fira Code',monospace;font-size:13px;color:#e2e8f0;display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:8px}
+.cmd-output span{color:#60a5fa}
+
+/* ── Terminal (intentionally dark) ── */
+.terminal{background:#0f172a;border:1px solid #334155;border-radius:10px;overflow:hidden}
+.terminal-bar{padding:10px 14px;background:#1e293b;display:flex;align-items:center;gap:8px;border-bottom:1px solid #334155}
+.t-dot{width:12px;height:12px;border-radius:50%}
+.t-dot.red{background:#ef4444}.t-dot.yellow{background:#f59e0b}.t-dot.green{background:#10b981}
+.terminal-body{padding:16px;font-family:'Cascadia Code','Fira Code',monospace;font-size:13px;line-height:1.7;min-height:120px}
+.t-prompt{color:#10b981}.t-cmd{color:#e2e8f0}.t-out{color:#6a737d}.t-cursor{display:inline-block;width:8px;height:14px;background:#60a5fa;animation:blink .8s step-end infinite;margin-left:2px;vertical-align:middle}
+@keyframes blink{50%{opacity:0}}
+
+/* ── LS Mockup ── */
+.ls-mockup{background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;min-height:280px;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+.ls-topbar{background:#f1f5f9;padding:10px 16px;display:flex;align-items:center;gap:12px;font-size:13px;color:#64748b;font-weight:600;border-bottom:1px solid #e2e8f0}
+.ls-body{display:grid;grid-template-columns:200px 1fr;min-height:240px}
+.ls-sidebar{background:#ffffff;border-right:1px solid #e2e8f0;padding:12px}
+.ls-sidebar .ls-btn{display:block;width:100%;padding:8px 10px;border-radius:6px;font-size:12.5px;font-weight:600;cursor:pointer;border:none;margin-bottom:6px;text-align:left;transition:all .15s}
+.ls-btn.primary{background:#3b82f6;color:#fff}
+.ls-btn.primary:hover{background:#2563eb}
+.ls-btn.ghost{background:#f1f5f9;color:#64748b}
+.ls-btn.ghost:hover{background:#e2e8f0;color:#334155}
+.ls-btn.active{background:#eff6ff;color:#2563eb;border:1px solid #bfdbfe}
+.ls-content{padding:16px;display:flex;flex-direction:column;gap:10px}
+.ls-label-pill{display:inline-flex;align-items:center;gap:8px;padding:6px 14px;border-radius:20px;font-size:12.5px;font-weight:700;cursor:pointer;border:2px solid transparent;transition:all .15s}
+.ls-label-pill.clean{background:#f0fdf4;color:#16a34a;border-color:#bbf7d0}
+.ls-label-pill.dirty{background:#fee2e2;color:#dc2626;border-color:#fecaca}
+.ls-label-pill:hover{transform:scale(1.03)}
+.ls-label-pill.selected{transform:scale(1.06);box-shadow:0 0 0 3px currentColor33}
+.ls-step-hint{font-size:12px;color:#94a3b8;margin-top:4px}
+.ls-step-highlight{color:#2563eb;font-weight:700}
+
+/* ── Canvas demo ── */
+#bbox-canvas-wrap{position:relative;display:inline-block;border:1px solid #e2e8f0;border-radius:8px;overflow:hidden;cursor:crosshair;user-select:none;line-height:0;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+#bbox-canvas{display:block}
+.label-select-row{display:flex;gap:10px;margin:10px 0;align-items:center}
+.label-btn{padding:7px 18px;border-radius:20px;font-size:13px;font-weight:700;cursor:pointer;border:2px solid;transition:all .15s}
+.label-btn.clean{background:#f0fdf4;color:#16a34a;border-color:#bbf7d0}
+.label-btn.dirty{background:#fee2e2;color:#dc2626;border-color:#fecaca}
+.label-btn.sel{box-shadow:0 0 0 3px currentColor44;transform:scale(1.04)}
+#yolo-output{background:#172033;border:1px solid #4b5f7a;border-radius:8px;padding:12px 14px;font-family:monospace;font-size:13px;color:#dbe7f5;margin-top:8px;min-height:44px;display:flex;align-items:center}\n#yolo-output .placeholder{color:#f8fafc;font-weight:700;letter-spacing:.01em}\n#yolo-output .placeholder-hint{color:#cbd5e1;font-weight:600}
+#yolo-output .yolo-val{color:#60a5fa;font-weight:700}
+#clear-btn{background:#f1f5f9;border:1px solid #e2e8f0;color:#64748b;border-radius:6px;padding:5px 14px;font-size:12px;cursor:pointer;transition:all .15s}
+#clear-btn:hover{background:#e2e8f0;color:#334155}
+
+/* ── File tree (kept dark) ── */
+.tree{font-family:'Cascadia Code','Fira Code',monospace;font-size:13px;line-height:1.8;background:#1e293b;border:1px solid #334155;border-radius:10px;padding:16px}
+.tree-line{display:flex;align-items:center;gap:6px;opacity:0;transform:translateX(-8px);transition:opacity .3s,transform .3s}
+.tree-line.visible{opacity:1;transform:translateX(0)}
+.tree-dir{color:#60a5fa}.tree-file{color:#e2e8f0}.tree-comment{color:#6a737d;font-size:11.5px}
+.tree-ignored{color:#475569;text-decoration:line-through}
+
+/* ── Flow ── */
+.flow{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin:12px 0}
+.flow-node{background:#ffffff;border:1px solid #e2e8f0;border-radius:8px;padding:8px 16px;font-size:13px;color:#334155;font-weight:600;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+.flow-node.hl{background:#eff6ff;border-color:#bfdbfe;color:#1d4ed8}
+.flow-arrow{color:#cbd5e1;font-size:20px}
+
+/* ── Tip cards ── */
+.tip-card{background:#ffffff;border:1px solid #e2e8f0;border-radius:10px;padding:14px;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+.tip-icon{font-size:22px;margin-bottom:6px}
+.tip-card h4{font-size:13px;font-weight:700;color:#1e293b;margin-bottom:4px}
+.tip-card p{font-size:12.5px;color:#94a3b8;margin:0}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:#f1f5f9}
+::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:3px}
+
+
+/* ── Readability refresh ── */
+html,body{color:#0f172a;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+#step-counter,.step-label{color:#64748b}
+h3{color:#475569}
+p{color:#334155}
+.card{color:#0f172a}
+.card p,.dep-table td,.tip-card p,.ls-topbar,.ls-btn.ghost,.code-lang{color:#475569}
+.callout{font-size:14px}
+.callout.info{color:#1e40af}
+.callout.warn{color:#7c2d12}
+.callout.tip{color:#166534}
+.callout.venv{color:#6d28d9}
+.check-item label{color:#1e293b}
+.check-item.checked label{color:#64748b}
+.dep-table th{color:#475569}
+.ls-step-hint{color:#64748b}
+#ring-text{fill:#64748b}
+.muted-list,.muted-list li{color:#475569 !important}
+.light-panel{background:#f8fafc !important;border:1px solid #e2e8f0 !important;color:#334155 !important}
+.light-panel strong{color:#0f172a !important}
+.light-badge{background:#e2e8f0 !important;color:#2563eb !important}
+.btn-subtle-dark{background:#334155 !important;border:1px solid #475569 !important;color:#e2e8f0 !important}
+
+</style>
+</head>
+<body>
+
+<!-- ══ TOP BAR ════════════════════════════════════════════════════════════════ -->
+<div id="topbar">
+  <div class="logo">Aero<span>Clean</span></div>
+
+  <div id="stepper">
+    <!-- dots injected by JS -->
+  </div>
+
+  <!-- Progress ring -->
+  <svg id="progress-ring" width="40" height="40" style="flex-shrink:0">
+    <circle cx="20" cy="20" r="16" fill="none" stroke="#1e2736" stroke-width="3"/>
+    <circle id="ring-fill" cx="20" cy="20" r="16" fill="none" stroke="#3b82f6" stroke-width="3"
+      stroke-dasharray="100.5" stroke-dashoffset="100.5" stroke-linecap="round"
+      transform="rotate(-90 20 20)" style="transition:stroke-dashoffset .4s"/>
+    <text id="ring-text" x="20" y="25" text-anchor="middle" fill="#94a3b8" font-size="10" font-weight="700" font-family="system-ui">0%</text>
+  </svg>
+</div>
+
+<!-- ══ VIEWPORT ═══════════════════════════════════════════════════════════════ -->
+<div id="viewport">
+
+  <!-- ── Screen 0: Welcome ─────────────────────────────────────────────────── -->
+  <div class="screen active" data-screen="0">
+    <h1>Data Collection &amp;<br/><span class="accent">Labeling Pipeline</span></h1>
+    <p style="font-size:15px;max-width:520px;margin-bottom:20px">
+      This guide walks you through capturing training images on the Raspberry Pi,
+      labeling them in Label Studio, and exporting a YOLO-format dataset ready to
+      drop into the Colab training notebook.
+    </p>
+
+    <div class="flow">
+      <div class="flow-node hl">1 · Virtual Env</div><div class="flow-arrow">→</div>
+      <div class="flow-node hl">2 · Dependencies</div><div class="flow-arrow">→</div>
+      <div class="flow-node hl">3 · Collect Data</div><div class="flow-arrow">→</div>
+      <div class="flow-node hl">4 · Label Studio</div><div class="flow-arrow">→</div>
+      <div class="flow-node hl">5 · Create Project</div><div class="flow-arrow">→</div>
+      <div class="flow-node hl">6 · Draw Boxes</div><div class="flow-arrow">→</div>
+      <div class="flow-node hl">7 · Export</div>
+    </div>
+
+    <div class="grid-2" style="margin-top:20px;max-width:680px">
+      <div class="card">
+        <h3 style="margin-top:0">Hardware needed</h3>
+        <ul class="muted-list" style="list-style:none;display:flex;flex-direction:column;gap:6px;font-size:13.5px;color:#475569">
+          <li>🖥️ &nbsp;Raspberry Pi 5 (4GB or 8GB)</li>
+          <li>📷 &nbsp;Camera Module 3 — IMX708, 12MP</li>
+          <li>💾 &nbsp;32 GB+ SD card</li>
+          <li>🌐 &nbsp;Internet access (for Label Studio)</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3 style="margin-top:0">Classes</h3>
+        <div style="display:flex;flex-direction:column;gap:10px;margin-top:4px">
+          <div style="display:flex;align-items:center;gap:10px">
+            <span style="width:12px;height:12px;border-radius:50%;background:#10b981;flex-shrink:0"></span>
+            <div>
+              <div style="font-weight:700;color:#0f172a;font-size:13.5px">clean_board</div>
+              <div style="color:#64748b;font-size:12px">Class ID 0 — erased, usable surface</div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px">
+            <span style="width:12px;height:12px;border-radius:50%;background:#ef4444;flex-shrink:0"></span>
+            <div>
+              <div style="font-weight:700;color:#0f172a;font-size:13.5px">dirty_board</div>
+              <div style="color:#64748b;font-size:12px">Class ID 1 — residue, ghost marks, smudges</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="callout tip" style="max-width:680px;margin-top:16px">
+      <span class="icon">💡</span>
+      <div>Check each step off as you go — your progress is saved in the browser.</div>
+    </div>
+  </div>
+
+  <!-- ── Screen 1: Virtual Env ─────────────────────────────────────────────── -->
+  <div class="screen" data-screen="1">
+    <h1>Virtual <span class="accent">Environment</span></h1>
+    <p>Always work inside a virtual environment. Label Studio pulls in dozens of packages — installing globally will conflict with <code>ultralytics</code> and <code>opencv</code>.</p>
+
+    <div class="callout venv">
+      <span class="icon">⭐</span>
+      <div><strong>Activate the venv every time you open a new terminal</strong> — it does not persist between sessions.</div>
+    </div>
+
+    <div style="max-width:640px;margin-top:16px">
+      <div class="os-tabs">
+        <div class="os-tab active" onclick="switchTab(this,'pi')">🐧 Pi / macOS / Linux</div>
+        <div class="os-tab" onclick="switchTab(this,'win')">🪟 Windows</div>
+      </div>
+      <div class="code-block" style="border-top-left-radius:0;border-top-right-radius:0">
+        <div class="code-header">
+          <span class="code-lang">bash</span>
+          <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+        </div>
+        <div class="os-panel active" id="tab-pi">
+          <pre><span class="cm"># Create once</span>
+python -m venv aeroclean_env
+
+<span class="cm"># Activate every session</span>
+source aeroclean_env/bin/activate
+
+<span class="cm"># Prompt becomes: (aeroclean_env) pi@raspberrypi:~$</span></pre>
+        </div>
+        <div class="os-panel" id="tab-win">
+          <pre><span class="cm"># Create once</span>
+python -m venv aeroclean_env
+
+<span class="cm"># Activate every session</span>
+aeroclean_env\Scripts\Activate.ps1</pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="venv-followup" style="max-width:640px">
+      <div>
+        <div class="mini-note">Deactivate when done</div>
+        <div class="code-block" style="max-width:340px">
+          <div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+          <pre>deactivate</pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="callout tip" style="max-width:640px;margin-top:12px">
+      <span class="icon">✅</span>
+      <div><code>aeroclean_env/</code> is already in <code>.gitignore</code> — it will never be committed.</div>
+    </div>
+
+    <h3>Checklist</h3>
+    <ul class="checklist" id="cl-1" style="max-width:520px">
+      <li class="check-item" onclick="toggleCheck(this,'venv-created')"><input type="checkbox" id="venv-created"><label for="venv-created">Created the virtual environment</label></li>
+      <li class="check-item" onclick="toggleCheck(this,'venv-active')"><input type="checkbox" id="venv-active"><label for="venv-active">Activated it — prompt shows <code>(aeroclean_env)</code></label></li>
+    </ul>
+  </div>
+
+  <!-- ── Screen 2: Dependencies ────────────────────────────────────────────── -->
+  <div class="screen" data-screen="2">
+    <h1><span class="accent">Dependencies</span></h1>
+
+    <div class="grid-2" style="max-width:760px;align-items:start">
+      <div>
+        <h3 style="margin-top:0">System packages (Pi only)</h3>
+        <div class="code-block">
+          <div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+          <pre>sudo apt update && sudo apt upgrade -y
+sudo apt install -y \
+  python3-picamera2 \
+  tesseract-ocr \
+  libcap-dev</pre>
+        </div>
+        <div class="callout info" style="margin-top:8px">
+          <span class="icon">ℹ️</span>
+          <div><strong>Do not pip-install picamera2.</strong> The apt version has the correct libcamera bindings.</div>
+        </div>
+      </div>
+
+      <div>
+        <h3 style="margin-top:0">Python packages</h3>
+        <div class="code-block">
+          <div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+          <pre>pip install -r requirements.txt
+pip install label-studio</pre>
+        </div>
+        <div class="callout tip" style="margin-top:8px">
+          <span class="icon">✅</span>
+          <div>Verify camera after apt install:<br/><code>libcamera-hello --list-cameras</code></div>
+        </div>
+      </div>
+    </div>
+
+    <h3 style="margin-top:16px">Full package list</h3>
+    <div style="max-width:760px;overflow-x:auto">
+      <table class="dep-table">
+        <thead><tr><th>Package</th><th>Version</th><th>Purpose</th><th></th></tr></thead>
+        <tbody>
+          <tr><td><code>opencv-python</code></td><td>≥ 4.9</td><td>Frame capture, preprocessing, display window</td><td><span class="badge-req">Required</span></td></tr>
+          <tr><td><code>numpy</code></td><td>≥ 1.26</td><td>Array manipulation for image data</td><td><span class="badge-req">Required</span></td></tr>
+          <tr><td><code>pytesseract</code></td><td>≥ 0.3.10</td><td>Python wrapper for Tesseract OCR (Model 1)</td><td><span class="badge-req">Required</span></td></tr>
+          <tr><td><code>ultralytics</code></td><td>≥ 8.3</td><td>YOLO11n training and inference (Model 2)</td><td><span class="badge-req">Required</span></td></tr>
+          <tr><td><code>label-studio</code></td><td>latest</td><td>Local annotation tool for bounding boxes</td><td><span class="badge-req">Required</span></td></tr>
+          <tr><td><code>pyyaml</code></td><td>≥ 6.0</td><td>Read/write <code>dataset.yaml</code> in Colab</td><td><span class="badge-req">Required</span></td></tr>
+          <tr><td><code>ncnn</code></td><td>latest</td><td>Faster NCNN inference on Pi (ultralytics bundles it)</td><td><span class="badge-opt">Optional</span></td></tr>
+          <tr><td><code>picamera2</code></td><td>system</td><td>IMX708 camera capture — install via apt, not pip</td><td><span class="badge-req">Required</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Checklist</h3>
+    <ul class="checklist" id="cl-2" style="max-width:520px">
+      <li class="check-item" onclick="toggleCheck(this,'sys-pkgs')"><input type="checkbox" id="sys-pkgs"><label for="sys-pkgs">Installed system packages via <code>apt</code></label></li>
+      <li class="check-item" onclick="toggleCheck(this,'pip-pkgs')"><input type="checkbox" id="pip-pkgs"><label for="pip-pkgs">Installed Python packages via <code>pip</code></label></li>
+      <li class="check-item" onclick="toggleCheck(this,'cam-check')"><input type="checkbox" id="cam-check"><label for="cam-check">Camera shows up in <code>libcamera-hello --list-cameras</code></label></li>
+    </ul>
+  </div>
+
+  <!-- ── Screen 3: Collect Data ────────────────────────────────────────────── -->
+  <div class="screen" data-screen="3">
+    <h1>Collect <span class="accent">Training Images</span></h1>
+    <p>Run <code>collect_data.py</code> on the Pi to capture images directly from the camera.</p>
+
+    <div class="grid-2" style="max-width:800px;align-items:start;gap:20px">
+      <div>
+        <h3 style="margin-top:0">Command builder</h3>
+        <div class="cmd-builder">
+          <div class="cmd-row">
+            <div>
+              <div style="font-size:11px;color:#475569;font-weight:700;margin-bottom:5px;text-transform:uppercase;letter-spacing:.08em">Class</div>
+              <select id="cmd-class" onchange="buildCmd()">
+                <option value="clean_board">clean_board</option>
+                <option value="dirty_board">dirty_board</option>
+              </select>
+            </div>
+            <div>
+              <div style="font-size:11px;color:#475569;font-weight:700;margin-bottom:5px;text-transform:uppercase;letter-spacing:.08em">Count</div>
+              <input type="number" id="cmd-count" value="150" min="10" max="500" onchange="buildCmd()" style="width:80px"/>
+            </div>
+            <div>
+              <div style="font-size:11px;color:#475569;font-weight:700;margin-bottom:5px;text-transform:uppercase;letter-spacing:.08em">Mode</div>
+              <select id="cmd-mode" onchange="buildCmd()">
+                <option value="manual">Manual (SPACE)</option>
+                <option value="auto">Burst (auto)</option>
+              </select>
+            </div>
+            <div id="interval-wrap" style="display:none">
+              <div style="font-size:11px;color:#475569;font-weight:700;margin-bottom:5px;text-transform:uppercase;letter-spacing:.08em">Interval (s)</div>
+              <input type="number" id="cmd-interval" value="2" min="1" max="30" onchange="buildCmd()" style="width:70px"/>
+            </div>
+          </div>
+          <div class="cmd-output">
+            <code id="cmd-preview" style="background:transparent;border:none;padding:0;color:#60a5fa;font-size:13px"></code>
+            <button class="copy-btn" onclick="copyCmdPreview(this)">Copy</button>
+          </div>
+        </div>
+
+        <div class="callout warn" style="margin-top:12px">
+          <span class="icon">⚠️</span>
+          <div>Run once for each class. Aim for <strong>100–200 images per class</strong> minimum.</div>
+        </div>
+      </div>
+
+      <div>
+        <h3 style="margin-top:0">Tips for a good dataset</h3>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <div class="tip-card">
+            <div class="tip-icon">💡</div>
+            <h4>Vary lighting</h4>
+            <p>Overhead fluorescent, natural window, lamp at an angle — the Pi will see all of these.</p>
+          </div>
+          <div class="tip-card">
+            <div class="tip-icon">🖊️</div>
+            <h4>Vary board coverage</h4>
+            <p>Lightly smudged, heavily marked, ghost marks, partially erased — capture the spectrum.</p>
+          </div>
+          <div class="tip-card">
+            <div class="tip-icon">📐</div>
+            <h4>Vary angle slightly</h4>
+            <p>Straight-on plus small tilts (±15°). Match the mounting height you'll use in production.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <h3>Checklist</h3>
+    <ul class="checklist" id="cl-3" style="max-width:520px">
+      <li class="check-item" onclick="toggleCheck(this,'c-clean')"><input type="checkbox" id="c-clean"><label for="c-clean">Captured ≥ 100 <strong>clean_board</strong> images</label></li>
+      <li class="check-item" onclick="toggleCheck(this,'c-dirty')"><input type="checkbox" id="c-dirty"><label for="c-dirty">Captured ≥ 100 <strong>dirty_board</strong> images</label></li>
+      <li class="check-item" onclick="toggleCheck(this,'c-variety')"><input type="checkbox" id="c-variety"><label for="c-variety">Captured under varied lighting and angles</label></li>
+    </ul>
+  </div>
+
+  <!-- ── Screen 4: Launch Label Studio ─────────────────────────────────────── -->
+  <div class="screen" data-screen="4">
+    <h1>Launch <span class="accent">Label Studio</span></h1>
+    <p>Label Studio runs locally as a web server. Keep this terminal open while labeling.</p>
+
+    <div class="grid-2" style="max-width:780px;align-items:start;gap:20px">
+      <div>
+        <h3 style="margin-top:0">Install &amp; start</h3>
+        <div class="code-block">
+          <div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+          <pre><span class="cm"># Make sure venv is active!</span>
+source aeroclean_env/bin/activate
+
+pip install label-studio
+label-studio start</pre>
+        </div>
+
+        <div class="callout info" style="margin-top:10px">
+          <span class="icon">🌐</span>
+          <div>Opens at <strong>http://localhost:8080</strong><br/>If it doesn't auto-open, paste that URL in your browser.</div>
+        </div>
+
+        <div class="callout warn" style="margin-top:8px">
+          <span class="icon">⚠️</span>
+          <div><strong>Keep this terminal open.</strong> Closing it stops the server and you will lose your session.</div>
+        </div>
+      </div>
+
+      <div>
+        <h3 style="margin-top:0">Simulated terminal</h3>
+        <div class="terminal" id="terminal-4">
+          <div class="terminal-bar">
+            <div class="t-dot red"></div>
+            <div class="t-dot yellow"></div>
+            <div class="t-dot green"></div>
+            <span style="margin-left:8px;font-size:12px;color:#475569">bash — aeroclean_env</span>
+          </div>
+          <div class="terminal-body" id="term-body">
+            <span class="t-prompt">$ </span><span class="t-cmd" id="term-cmd"></span><span class="t-cursor" id="term-cursor"></span>
+          </div>
+        </div>
+        <button onclick="replayTerminal()" style="margin-top:8px;background:#334155;border:1px solid #475569;color:#e2e8f0;border-radius:6px;padding:5px 14px;font-size:12px;cursor:pointer">▶ Replay</button>
+      </div>
+    </div>
+
+    <h3>First-time account setup</h3>
+    <div style="display:flex;flex-direction:column;gap:6px;max-width:500px">
+      <div style="display:flex;align-items:center;gap:12px;padding:9px 14px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;font-size:13.5px;color:#334155">
+        <span style="width:22px;height:22px;border-radius:50%;background:#e2e8f0;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#2563eb;flex-shrink:0">1</span>
+        Enter any email and password — this is <strong style="color:#0f172a">local only</strong>, no data leaves your machine.
+      </div>
+      <div style="display:flex;align-items:center;gap:12px;padding:9px 14px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;font-size:13.5px;color:#334155">
+        <span style="width:22px;height:22px;border-radius:50%;background:#e2e8f0;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#2563eb;flex-shrink:0">2</span>
+        Sign in → you land on the <strong style="color:#0f172a">Projects dashboard</strong>.
+      </div>
+    </div>
+
+    <h3>Checklist</h3>
+    <ul class="checklist" style="max-width:520px">
+      <li class="check-item" onclick="toggleCheck(this,'ls-install')"><input type="checkbox" id="ls-install"><label for="ls-install">Installed label-studio via pip</label></li>
+      <li class="check-item" onclick="toggleCheck(this,'ls-open')"><input type="checkbox" id="ls-open"><label for="ls-open">Browser opened at localhost:8080</label></li>
+      <li class="check-item" onclick="toggleCheck(this,'ls-account')"><input type="checkbox" id="ls-account"><label for="ls-account">Created account and signed in</label></li>
+    </ul>
+  </div>
+
+  <!-- ── Screen 5: Create Project ──────────────────────────────────────────── -->
+  <div class="screen" data-screen="5">
+    <h1>Create Project<br/>&amp; <span class="accent">Import Images</span></h1>
+    <p>Click through the interactive mockup to follow the Label Studio steps.</p>
+
+    <div class="grid-2" style="max-width:820px;align-items:start;gap:20px">
+      <div>
+        <h3 style="margin-top:0">Interactive mockup</h3>
+        <div class="ls-mockup">
+          <div class="ls-topbar">
+            <span style="color:#60a5fa;font-weight:800">Label Studio</span>
+            <span style="color:#475569">›</span>
+            <span id="ls-breadcrumb">Projects</span>
+          </div>
+          <div class="ls-body">
+            <div class="ls-sidebar">
+              <button class="ls-btn primary" id="ls-create-btn" onclick="lsStep(1)">+ Create Project</button>
+              <button class="ls-btn ghost active">📋 Projects</button>
+              <button class="ls-btn ghost">⚙️ Settings</button>
+            </div>
+            <div class="ls-content" id="ls-content">
+              <div style="color:#475569;font-size:13px;margin-top:8px">Click <strong style="color:#60a5fa">+ Create Project</strong> to begin</div>
+            </div>
+          </div>
+        </div>
+        <p id="ls-hint" style="font-size:12.5px;color:#475569;margin-top:8px">Step 1 of 4 — click the button above</p>
+      </div>
+
+      <div>
+        <h3 style="margin-top:0">Steps</h3>
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <div id="ls-s1" style="display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border-radius:8px;font-size:13px;background:#f8fafc;border:1px solid #e2e8f0;transition:all .2s">
+            <span style="color:#475569;font-weight:700;min-width:18px">1.</span>
+            <span style="color:#334155">Click <strong style="color:#2563eb">+ Create Project</strong> — give it a name, e.g. <code>AeroClean</code></span>
+          </div>
+          <div id="ls-s2" style="display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border-radius:8px;font-size:13px;background:#111827;border:1px solid #1e2736;opacity:.5;transition:all .2s">
+            <span style="color:#475569;font-weight:700;min-width:18px">2.</span>
+            <span style="color:#334155">Go to <strong style="color:#0f172a">Labeling Setup</strong> → choose <strong style="color:#0f172a">Object Detection with Bounding Boxes</strong></span>
+          </div>
+          <div id="ls-s3" style="display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border-radius:8px;font-size:13px;background:#111827;border:1px solid #1e2736;opacity:.5;transition:all .2s">
+            <span style="color:#475569;font-weight:700;min-width:18px">3.</span>
+            <span style="color:#334155">Add labels <code>clean_board</code> and <code>dirty_board</code> — order matters (class IDs 0 and 1)</span>
+          </div>
+          <div id="ls-s4" style="display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border-radius:8px;font-size:13px;background:#111827;border:1px solid #1e2736;opacity:.5;transition:all .2s">
+            <span style="color:#475569;font-weight:700;min-width:18px">4.</span>
+            <span style="color:#334155">Click <strong style="color:#0f172a">Import</strong> and drag your <code>images/raw/</code> folder to upload all images</span>
+          </div>
+        </div>
+
+        <div class="callout info" style="margin-top:14px">
+          <span class="icon">ℹ️</span>
+          <div>Import both <code>clean_board/</code> and <code>dirty_board/</code> subfolders at once. Label Studio shows them all in a single task list.</div>
+        </div>
+      </div>
+    </div>
+
+    <h3>Checklist</h3>
+    <ul class="checklist" style="max-width:520px">
+      <li class="check-item" onclick="toggleCheck(this,'p-created')"><input type="checkbox" id="p-created"><label for="p-created">Project created with name <code>AeroClean</code></label></li>
+      <li class="check-item" onclick="toggleCheck(this,'p-labels')"><input type="checkbox" id="p-labels"><label for="p-labels">Labels <code>clean_board</code> and <code>dirty_board</code> added (in that order)</label></li>
+      <li class="check-item" onclick="toggleCheck(this,'p-import')"><input type="checkbox" id="p-import"><label for="p-import">All images imported from <code>images/raw/</code></label></li>
+    </ul>
+  </div>
+
+  <!-- ── Screen 6: Draw Bounding Boxes ─────────────────────────────────────── -->
+  <div class="screen" data-screen="6">
+    <h1>Draw <span class="accent">Bounding Boxes</span></h1>
+    <p>Try it live — draw a box on the board below, pick a label, and see the YOLO annotation format update in real time.</p>
+
+    <div class="grid-2" style="max-width:820px;align-items:start;gap:20px">
+      <div>
+        <h3 style="margin-top:0">Live demo</h3>
+        <div class="label-select-row">
+          <span style="font-size:12px;color:#475569;font-weight:700;text-transform:uppercase;letter-spacing:.08em">Active label:</span>
+          <button class="label-btn clean sel" id="btn-clean" onclick="selectLabel('clean_board')">clean_board</button>
+          <button class="label-btn dirty" id="btn-dirty" onclick="selectLabel('dirty_board')">dirty_board</button>
+          <button id="clear-btn" onclick="clearCanvas()">Clear</button>
+        </div>
+        <div id="bbox-canvas-wrap">
+          <canvas id="bbox-canvas" width="360" height="220"></canvas>
+        </div>
+        <div id="yolo-output"><span class="placeholder">Draw a box to see YOLO output…</span></div>
+      </div>
+
+      <div>
+        <h3 style="margin-top:0">Label Studio controls</h3>
+        <div style="overflow-x:auto">
+          <table class="dep-table">
+            <thead><tr><th>Action</th><th>How</th></tr></thead>
+            <tbody>
+              <tr><td><strong>Select label</strong></td><td>Click <code>clean_board</code> or <code>dirty_board</code> in the left panel, or press <kbd>1</kbd> / <kbd>2</kbd></td></tr>
+              <tr><td><strong>Draw box</strong></td><td>Click and drag to draw a rectangle around the board surface</td></tr>
+              <tr><td><strong>Resize</strong></td><td>Click box → drag corners or edges</td></tr>
+              <tr><td><strong>Delete box</strong></td><td>Click box → <kbd>Backspace</kbd></td></tr>
+              <tr><td><strong>Submit &amp; next</strong></td><td>Click <strong>Submit</strong> bottom-right, or <kbd>Ctrl + Enter</kbd></td></tr>
+              <tr><td><strong>Skip image</strong></td><td><strong>Skip</strong> for blurry or unusable frames</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="callout tip" style="margin-top:12px">
+          <span class="icon">🎯</span>
+          <div><strong>One box per image.</strong> Draw a single tight box around the full board surface. Consistency beats perfection.</div>
+        </div>
+        <div class="callout warn" style="margin-top:8px">
+          <span class="icon">⚠️</span>
+          <div>Decide a rule for ambiguous boards (e.g. "any visible residue = dirty") and stick to it. Inconsistent labels are the #1 cause of poor mAP.</div>
+        </div>
+      </div>
+    </div>
+
+    <h3>Checklist</h3>
+    <ul class="checklist" style="max-width:520px">
+      <li class="check-item" onclick="toggleCheck(this,'bb-all')"><input type="checkbox" id="bb-all"><label for="bb-all">Labeled all images with one bounding box each</label></li>
+      <li class="check-item" onclick="toggleCheck(this,'bb-balanced')"><input type="checkbox" id="bb-balanced"><label for="bb-balanced">Classes are roughly balanced (within 20%)</label></li>
+      <li class="check-item" onclick="toggleCheck(this,'bb-consistent')"><input type="checkbox" id="bb-consistent"><label for="bb-consistent">Applied a consistent labeling rule for ambiguous boards</label></li>
+    </ul>
+  </div>
+
+  <!-- ── Screen 7: Export & Structure ──────────────────────────────────────── -->
+  <div class="screen" data-screen="7">
+    <h1>Export &amp; <span class="accent">Dataset Structure</span></h1>
+
+    <div class="grid-2" style="max-width:820px;align-items:start;gap:20px">
+      <div>
+        <h3 style="margin-top:0">Export from Label Studio</h3>
+        <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:14px">
+          <div style="display:flex;gap:10px;padding:9px 12px;border-radius:8px;background:#f8fafc;border:1px solid #e2e8f0;font-size:13px;color:#334155">
+            <span style="color:#2563eb;font-weight:700;min-width:18px">1.</span> Project dashboard → click <strong style="color:#0f172a">⋯ → Export</strong>
+          </div>
+          <div style="display:flex;gap:10px;padding:9px 12px;border-radius:8px;background:#f8fafc;border:1px solid #e2e8f0;font-size:13px;color:#334155">
+            <span style="color:#2563eb;font-weight:700;min-width:18px">2.</span> Select <strong style="color:#0f172a">YOLO format</strong>
+          </div>
+          <div style="display:flex;gap:10px;padding:9px 12px;border-radius:8px;background:#f8fafc;border:1px solid #e2e8f0;font-size:13px;color:#334155">
+            <span style="color:#60a5fa;font-weight:700;min-width:18px">3.</span> Download the zip → save to project root
+          </div>
+          <div style="display:flex;gap:10px;padding:9px 12px;border-radius:8px;background:#f8fafc;border:1px solid #e2e8f0;font-size:13px;color:#334155">
+            <span style="color:#60a5fa;font-weight:700;min-width:18px">4.</span> Extract into <code>images/</code> and <code>labels/</code>
+          </div>
+        </div>
+
+        <h3>YOLO label format</h3>
+        <div class="code-block">
+          <div class="code-header"><span class="code-lang">yolo .txt</span></div>
+          <pre><span class="cm"># class  x_center  y_center  width  height  (0–1 normalised)</span>
+1 0.512 0.498 0.883 0.762</pre>
+        </div>
+
+        <h3>Zip for Colab</h3>
+        <div class="code-block">
+          <div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+          <pre>zip -r aeroclean_dataset.zip \
+  images/ labels/ train/dataset.yaml</pre>
+        </div>
+      </div>
+
+      <div>
+        <h3 style="margin-top:0">Required directory structure <button onclick="animateTree()" style="background:#334155;border:1px solid #475569;color:#e2e8f0;border-radius:5px;padding:2px 10px;font-size:11px;cursor:pointer;margin-left:8px">▶ Animate</button></h3>
+        <div class="tree" id="file-tree">
+          <div class="tree-line" data-delay="0"><span class="tree-dir">AeroClean/</span></div>
+          <div class="tree-line" data-delay="80"><span style="color:#475569">├── </span><span class="tree-dir">images/</span></div>
+          <div class="tree-line" data-delay="160"><span style="color:#475569">│   ├── </span><span class="tree-dir">train/</span><span class="tree-comment">  ← 80% of images</span></div>
+          <div class="tree-line" data-delay="240"><span style="color:#475569">│   ├── </span><span class="tree-dir">val/</span><span class="tree-comment">    ← 10%</span></div>
+          <div class="tree-line" data-delay="320"><span style="color:#475569">│   └── </span><span class="tree-dir">test/</span><span class="tree-comment">   ← 10%</span></div>
+          <div class="tree-line" data-delay="400"><span style="color:#475569">├── </span><span class="tree-dir">labels/</span></div>
+          <div class="tree-line" data-delay="480"><span style="color:#475569">│   ├── </span><span class="tree-dir">train/</span><span class="tree-comment">  ← matching .txt files</span></div>
+          <div class="tree-line" data-delay="560"><span style="color:#475569">│   ├── </span><span class="tree-dir">val/</span></div>
+          <div class="tree-line" data-delay="640"><span style="color:#475569">│   └── </span><span class="tree-dir">test/</span></div>
+          <div class="tree-line" data-delay="720"><span style="color:#475569">└── </span><span class="tree-dir">train/</span></div>
+          <div class="tree-line" data-delay="800"><span style="color:#475569">    └── </span><span class="tree-file">dataset.yaml</span></div>
+        </div>
+
+        <div class="callout tip" style="margin-top:14px">
+          <span class="icon">🎉</span>
+          <div>Upload <code>aeroclean_dataset.zip</code> to Colab in Step 4 of <code>train/train_colab.ipynb</code>. The notebook handles the rest.</div>
+        </div>
+      </div>
+    </div>
+
+    <h3>Checklist</h3>
+    <ul class="checklist" style="max-width:520px">
+      <li class="check-item" onclick="toggleCheck(this,'exp-done')"><input type="checkbox" id="exp-done"><label for="exp-done">Exported YOLO format zip from Label Studio</label></li>
+      <li class="check-item" onclick="toggleCheck(this,'exp-split')"><input type="checkbox" id="exp-split"><label for="exp-split">Dataset split into train / val / test folders</label></li>
+      <li class="check-item" onclick="toggleCheck(this,'exp-zip')"><input type="checkbox" id="exp-zip"><label for="exp-zip">Created <code>aeroclean_dataset.zip</code> for Colab upload</label></li>
+    </ul>
+  </div>
+
+</div><!-- /viewport -->
+
+<!-- ══ FOOTER ════════════════════════════════════════════════════════════════ -->
+<div id="footer">
+  <button class="btn btn-ghost" id="btn-back" onclick="navigate(-1)" disabled>← Back</button>
+  <span id="step-counter">Step 1 of 8</span>
+  <button class="btn btn-primary" id="btn-next" onclick="navigate(1)">Next →</button>
+</div>
+
+<script>
+/* ══ STATE ═══════════════════════════════════════════════════════════════════ */
+const STEPS = ['Welcome','Venv','Dependencies','Collect Data','Label Studio','Create Project','Draw Boxes','Export'];
+let cur = 0;
+const checks = JSON.parse(localStorage.getItem('ac-checks')||'{}');
+
+/* ══ STEPPER INIT ════════════════════════════════════════════════════════════ */
+const stepper = document.getElementById('stepper');
+STEPS.forEach((label, i) => {
+  if (i > 0) {
+    const line = document.createElement('div');
+    line.className = 'step-line';
+    line.id = 'line-'+i;
+    stepper.appendChild(line);
+  }
+  const dot = document.createElement('div');
+  dot.className = 'step-dot' + (i===0?' active':'');
+  dot.id = 'dot-'+i;
+  dot.onclick = () => goTo(i);
+  dot.innerHTML = `<div class="num"><span>${i+1}</span><div class="step-label">${label}</div></div>`;
+  stepper.appendChild(dot);
+});
+
+/* ══ NAVIGATE ════════════════════════════════════════════════════════════════ */
+function navigate(dir) {
+  goTo(cur + dir);
+}
+
+function goTo(target) {
+  if (target < 0 || target >= STEPS.length) return;
+  const screens = document.querySelectorAll('.screen');
+  screens[cur].classList.remove('active');
+  screens[cur].classList.add('exit-left');
+  setTimeout(() => screens[cur].classList.remove('exit-left'), 400);
+
+  cur = target;
+  screens[cur].classList.add('active');
+
+  updateUI();
+  if (cur === 4) setTimeout(replayTerminal, 500);
+  if (cur === 7) setTimeout(animateTree, 400);
+}
+
+function updateUI() {
+  document.getElementById('btn-back').disabled = cur === 0;
+  document.getElementById('btn-next').disabled = cur === STEPS.length - 1;
+  document.getElementById('btn-next').textContent = cur === STEPS.length - 1 ? '✓ Done' : 'Next →';
+  document.getElementById('step-counter').textContent = `Step ${cur+1} of ${STEPS.length}`;
+
+  STEPS.forEach((_, i) => {
+    const dot = document.getElementById('dot-'+i);
+    dot.classList.remove('active','done');
+    if (i < cur) dot.classList.add('done');
+    else if (i === cur) dot.classList.add('active');
+    if (i > 0) {
+      const line = document.getElementById('line-'+i);
+      line.style.background = i <= cur ? '#10b981' : '#cbd5e1';
+    }
+  });
+
+  // Progress ring
+  const pct = cur / (STEPS.length - 1);
+  const circumference = 100.5;
+  document.getElementById('ring-fill').style.strokeDashoffset = circumference * (1 - pct);
+  document.getElementById('ring-text').textContent = Math.round(pct*100)+'%';
+}
+
+/* ══ CHECKLIST ═══════════════════════════════════════════════════════════════ */
+function toggleCheck(el, id) {
+  const cb = el.querySelector('input');
+  cb.checked = !cb.checked;
+  el.classList.toggle('checked', cb.checked);
+  checks[id] = cb.checked;
+  localStorage.setItem('ac-checks', JSON.stringify(checks));
+}
+
+// Restore saved checks
+document.querySelectorAll('.check-item input').forEach(cb => {
+  if (checks[cb.id]) {
+    cb.checked = true;
+    cb.closest('.check-item').classList.add('checked');
+  }
+});
+
+/* ══ COPY BUTTONS ════════════════════════════════════════════════════════════ */
+function copyCode(btn) {
+  const panels = btn.closest('.code-block').querySelectorAll('.os-panel.active, pre');
+  const target = btn.closest('.code-block').querySelector('.os-panel.active pre') ||
+                 btn.closest('.code-block').querySelector('pre');
+  if (!target) return;
+  navigator.clipboard.writeText(target.innerText).then(() => {
+    btn.textContent = 'Copied!'; btn.classList.add('ok');
+    setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('ok'); }, 1800);
+  });
+}
+
+/* ══ OS TABS ═════════════════════════════════════════════════════════════════ */
+function switchTab(tab, id) {
+  const container = tab.closest('.os-tabs').parentElement;
+  container.querySelectorAll('.os-tab').forEach(t => t.classList.remove('active'));
+  container.querySelectorAll('.os-panel').forEach(p => p.classList.remove('active'));
+  tab.classList.add('active');
+  const target = container.querySelector('#tab-' + id);
+  if (target) target.classList.add('active');
+}
+
+/* ══ COMMAND BUILDER ═════════════════════════════════════════════════════════ */
+function buildCmd() {
+  const cls = document.getElementById('cmd-class').value;
+  const cnt = document.getElementById('cmd-count').value;
+  const mode = document.getElementById('cmd-mode').value;
+  const iWrap = document.getElementById('interval-wrap');
+  iWrap.style.display = mode === 'auto' ? '' : 'none';
+  let cmd = `python collect_data.py --class ${cls} --count ${cnt}`;
+  if (mode === 'auto') cmd += ` --interval ${document.getElementById('cmd-interval').value}`;
+  document.getElementById('cmd-preview').textContent = cmd;
+}
+buildCmd();
+
+function copyCmdPreview(btn) {
+  const txt = document.getElementById('cmd-preview').textContent;
+  navigator.clipboard.writeText(txt).then(() => {
+    btn.textContent = 'Copied!'; btn.classList.add('ok');
+    setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('ok'); }, 1800);
+  });
+}
+
+/* ══ TERMINAL ANIMATION ══════════════════════════════════════════════════════ */
+const termLines = [
+  { type:'cmd', text:'source aeroclean_env/bin/activate' },
+  { type:'out', text:'(aeroclean_env) pi@raspberrypi:~$' },
+  { type:'cmd', text:'label-studio start' },
+  { type:'out', text:'Starting Label Studio…' },
+  { type:'out', text:'Database initialized.' },
+  { type:'out', text:'✓ Server is running at http://localhost:8080' },
+];
+let termTimer = null;
+
+function replayTerminal() {
+  const body = document.getElementById('term-body');
+  clearTimeout(termTimer);
+  body.innerHTML = '<span class="t-prompt">$ </span><span class="t-cmd" id="term-cmd"></span><span class="t-cursor" id="term-cursor"></span>';
+  let lineIdx = 0, charIdx = 0;
+
+  function typeChar() {
+    if (lineIdx >= termLines.length) return;
+    const line = termLines[lineIdx];
+    const cmd = document.getElementById('term-cmd');
+    const cursor = document.getElementById('term-cursor');
+    if (line.type === 'cmd') {
+      if (charIdx < line.text.length) {
+        cmd.textContent += line.text[charIdx++];
+        termTimer = setTimeout(typeChar, 28);
+      } else {
+        lineIdx++; charIdx = 0;
+        termTimer = setTimeout(() => {
+          body.innerHTML += '<br/>';
+          lineIdx < termLines.length && addNextLine();
+        }, 300);
+      }
+    }
+  }
+
+  function addNextLine() {
+    if (lineIdx >= termLines.length) return;
+    const line = termLines[lineIdx];
+    if (line.type === 'out') {
+      const color = line.text.includes('✓') ? '#10b981' : '#6a737d';
+      body.innerHTML += `<span style="color:${color}">${line.text}</span><br/>`;
+      lineIdx++;
+      if (lineIdx < termLines.length) {
+        termTimer = setTimeout(() => {
+          const next = termLines[lineIdx];
+          if (next.type === 'cmd') {
+            body.innerHTML += '<span class="t-prompt">$ </span><span class="t-cmd" id="term-cmd"></span><span class="t-cursor" id="term-cursor"></span>';
+            charIdx = 0;
+            termTimer = setTimeout(typeChar, 150);
+          } else { addNextLine(); }
+        }, 200);
+      }
+    }
+  }
+  typeChar();
+}
+
+/* ══ LABEL STUDIO MOCKUP ═════════════════════════════════════════════════════ */
+let lsCurStep = 0;
+function lsStep(n) {
+  lsCurStep = n;
+  const content = document.getElementById('ls-content');
+  const hint = document.getElementById('ls-hint');
+  const bc = document.getElementById('ls-breadcrumb');
+
+  [1,2,3,4].forEach(i => {
+    const el = document.getElementById('ls-s'+i);
+    if (el) el.style.opacity = i <= n ? '1' : '0.4';
+  });
+
+  if (n===1) {
+    bc.textContent = 'New Project';
+    content.innerHTML = `
+      <div style="font-size:13px;color:#475569;margin-bottom:8px">Project name:</div>
+      <input value="AeroClean" style="background:#ffffff;border:1px solid #3b82f6;border-radius:6px;color:#0f172a;padding:7px 10px;font-size:13px;width:100%;margin-bottom:10px"/>
+      <button class="ls-btn primary" onclick="lsStep(2)" style="width:100%">Next: Labeling Setup →</button>`;
+    hint.innerHTML = 'Step 1 of 4 — project named, click Next';
+  } else if (n===2) {
+    bc.textContent = 'New Project › Labeling Setup';
+    content.innerHTML = `
+      <div style="font-size:12px;color:#475569;margin-bottom:8px;font-weight:700;text-transform:uppercase;letter-spacing:.08em">Choose template</div>
+      <button class="ls-btn ghost" style="width:100%;margin-bottom:4px">Image Classification</button>
+      <button class="ls-btn active" style="width:100%;margin-bottom:4px">✓ Object Detection with Bounding Boxes</button>
+      <button class="ls-btn ghost" style="width:100%;margin-bottom:10px">Semantic Segmentation</button>
+      <button class="ls-btn primary" onclick="lsStep(3)" style="width:100%">Next: Add Labels →</button>`;
+    hint.innerHTML = 'Step 2 of 4 — Object Detection selected';
+  } else if (n===3) {
+    bc.textContent = 'New Project › Labels';
+    content.innerHTML = `
+      <div style="font-size:12px;color:#475569;margin-bottom:8px;font-weight:700;text-transform:uppercase;letter-spacing:.08em">Label names</div>
+      <div style="display:flex;gap:8px;margin-bottom:10px">
+        <span class="ls-label-pill clean">clean_board <span style="cursor:pointer;opacity:.6">✕</span></span>
+        <span class="ls-label-pill dirty">dirty_board <span style="cursor:pointer;opacity:.6">✕</span></span>
+      </div>
+      <div style="font-size:11.5px;color:#475569;margin-bottom:10px">clean_board = ID 0 · dirty_board = ID 1</div>
+      <button class="ls-btn primary" onclick="lsStep(4)" style="width:100%">Save &amp; Import Images →</button>`;
+    hint.innerHTML = 'Step 3 of 4 — labels added in correct order';
+  } else if (n===4) {
+    bc.textContent = 'AeroClean › Import';
+    content.innerHTML = `
+      <div style="border:2px dashed #94a3b8;border-radius:8px;padding:18px;text-align:center;color:#475569;font-size:13px;cursor:pointer;transition:all .15s;background:#ffffff" onmouseenter="this.style.borderColor='#3b82f6';this.style.color='#60a5fa'" onmouseleave="this.style.borderColor='#2d3a4e';this.style.color='#475569'">
+        📁 Drop <code>images/raw/</code> here<br/>or click to browse
+      </div>
+      <button class="ls-btn primary" style="width:100%;margin-top:10px" onclick="this.textContent='✓ 300 tasks imported';this.style.background='#10b981'">Import Files</button>`;
+    hint.innerHTML = 'Step 4 of 4 — import images/raw/ folder';
+  }
+}
+
+/* ══ CANVAS BBOX DEMO ════════════════════════════════════════════════════════ */
+const canvas = document.getElementById('bbox-canvas');
+const ctx = canvas.getContext('2d');
+let activeLabel = 'clean_board';
+let drawing = false, startX=0, startY=0, boxes=[];
+
+// Draw whiteboard background
+function drawBoard() {
+  ctx.fillStyle = '#e8e8e8';
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+  // Board surface
+  ctx.fillStyle = '#f5f5f0';
+  ctx.fillRect(20,20,canvas.width-40,canvas.height-40);
+  ctx.strokeStyle = '#c0c0b8';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(20,20,canvas.width-40,canvas.height-40);
+  // Simulated marker marks
+  ctx.strokeStyle = '#888';
+  ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(60,80); ctx.lineTo(180,80); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(60,110); ctx.lineTo(140,110); ctx.stroke();
+  // Ghost residue
+  ctx.fillStyle = 'rgba(100,100,100,0.12)';
+  ctx.fillRect(50,70,120,60);
+  ctx.fillStyle = '#666';
+  ctx.font = '13px sans-serif';
+  ctx.fillText('dirty board', 80,100);
+}
+
+function redraw() {
+  drawBoard();
+  boxes.forEach(b => {
+    const color = b.label === 'clean_board' ? '#10b981' : '#ef4444';
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2;
+    ctx.strokeRect(b.x,b.y,b.w,b.h);
+    ctx.fillStyle = color+'cc';
+    ctx.fillRect(b.x, b.y-20, ctx.measureText(b.label).width+12, 20);
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 11px sans-serif';
+    ctx.fillText(b.label, b.x+6, b.y-6);
+  });
+}
+
+function getPos(e) {
+  const r = canvas.getBoundingClientRect();
+  const ev = e.touches ? e.touches[0] : e;
+  return { x: ev.clientX - r.left, y: ev.clientY - r.top };
+}
+
+canvas.addEventListener('mousedown', e => { const p=getPos(e); drawing=true; startX=p.x; startY=p.y; });
+canvas.addEventListener('touchstart', e => { e.preventDefault(); const p=getPos(e); drawing=true; startX=p.x; startY=p.y; });
+canvas.addEventListener('mousemove', e => {
+  if (!drawing) return;
+  const p=getPos(e);
+  redraw();
+  const color = activeLabel==='clean_board'?'#10b981':'#ef4444';
+  ctx.strokeStyle=color; ctx.lineWidth=2; ctx.setLineDash([4,4]);
+  ctx.strokeRect(startX,startY,p.x-startX,p.y-startY);
+  ctx.setLineDash([]);
+});
+canvas.addEventListener('mouseup', e => {
+  if (!drawing) return; drawing=false;
+  const p=getPos(e);
+  const x=Math.min(startX,p.x), y=Math.min(startY,p.y);
+  const w=Math.abs(p.x-startX), h=Math.abs(p.y-startY);
+  if (w>8 && h>8) {
+    boxes = [{ x,y,w,h,label:activeLabel }]; // one box at a time
+    redraw();
+    showYOLO(x,y,w,h);
+  }
+});
+canvas.addEventListener('touchend', e => { canvas.dispatchEvent(new MouseEvent('mouseup', { clientX: e.changedTouches[0].clientX, clientY: e.changedTouches[0].clientY })); });
+
+function showYOLO(x,y,w,h) {
+  const cw=canvas.width, ch=canvas.height;
+  const cx=((x+w/2)/cw).toFixed(4), cy=((y+h/2)/ch).toFixed(4);
+  const nw=(w/cw).toFixed(4), nh=(h/ch).toFixed(4);
+  const id = activeLabel==='clean_board'?0:1;
+  document.getElementById('yolo-output').innerHTML =
+    `<span style="color:#6a737d"># ${activeLabel} — YOLO format</span><br/>`+
+    `<span class="yolo-val">${id}</span> <span class="yolo-val">${cx}</span> <span class="yolo-val">${cy}</span> <span class="yolo-val">${nw}</span> <span class="yolo-val">${nh}</span>`;
+}
+
+function selectLabel(lbl) {
+  activeLabel = lbl;
+  document.getElementById('btn-clean').classList.toggle('sel', lbl==='clean_board');
+  document.getElementById('btn-dirty').classList.toggle('sel', lbl==='dirty_board');
+}
+
+function clearCanvas() {
+  boxes=[]; redraw();
+  document.getElementById('yolo-output').innerHTML='<span style="color:#475569">Draw a box to see YOLO output…</span>';
+}
+
+drawBoard();
+
+/* ══ FILE TREE ANIMATION ═════════════════════════════════════════════════════ */
+function animateTree() {
+  const lines = document.querySelectorAll('#file-tree .tree-line');
+  lines.forEach(l => { l.classList.remove('visible'); });
+  lines.forEach((l,i) => {
+    const delay = parseInt(l.dataset.delay)||i*80;
+    setTimeout(() => l.classList.add('visible'), delay);
+  });
+}
+
+/* ══ INIT ════════════════════════════════════════════════════════════════════ */
+updateUI();
+// Show all tree lines on load
+document.querySelectorAll('#file-tree .tree-line').forEach(l => l.classList.add('visible'));
+</script>
+</body>
+</html>

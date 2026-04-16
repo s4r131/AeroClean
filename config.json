@@ -1,0 +1,116 @@
+{
+  "_note": "All hardware-dependent values (UART ports, GPIO pins) are set to null until wired. The code will error clearly if a null value is used at runtime.",
+
+  "active_model": "yolo",
+  "active_model_note": "Default model, Used in help text only. Overridden at runtime by --model flag.",
+
+  "resolution": [1920, 1080],
+  "resolution_note": "Camera capture resolution [width, height] in pixels. Must match frame_width_px and frame_height_px in the mission block.",
+
+  "framerate": 30,
+  "framerate_note": "Camera frames per second. 30 is the IMX708 default.",
+
+  "board_roi": null,
+  "board_roi_note": "Optional [x, y, w, h] crop rectangle for OCR mode. Limits Tesseract to the board area only. null = full frame.",
+
+  "yolo_weights": "weights/best_ncnn_model",
+  "yolo_weights_note": "Path to the exported NCNN model directory (contains *.param and *.bin). See README: Training walkthrough.",
+
+  "yolo_conf": 0.45,
+  "yolo_conf_note": "YOLO detection confidence threshold (0.0-1.0). Detections below this score are ignored. Override at runtime with --conf flag.",
+
+  "display": true,
+  "display_note": "Show live OpenCV window during inference and mission. Set to false on a headless Pi with no monitor.",
+
+  "save_output": false,
+  "save_output_note": "Automatically save every annotated frame to output_dir. Enabled per-run with --save flag instead.",
+
+  "output_dir": "output",
+  "output_dir_note": "Directory for saved annotated frames (created automatically if it does not exist).",
+
+  "mission": {
+    "_note": "All settings for the autonomous drone mission (python main.py --mode mission).",
+
+    "mavlink_uart": null,
+    "mavlink_uart_note": "UART port connecting the Pi to the ArduPilot flight controller. Example: /dev/ttyAMA0. Run 'ls /dev/ttyAMA*' on the Pi to list available ports. See requirements_pi.txt for UART setup.",
+
+    "mavlink_baud": 57600,
+    "mavlink_baud_note": "Baud rate for the ArduPilot MAVLink connection. Must match SERIALx_BAUD on the flight controller (57600 is the ArduPilot default for companion computers).",
+
+    "sensor_uart": null,
+    "sensor_uart_note": "UART port connecting the Pi to the MicoAir MTF-02P optical flow and range sensor. Must be a different port from mavlink_uart. Example: /dev/ttyAMA2.",
+
+    "sensor_baud": 115200,
+    "sensor_baud_note": "Baud rate for the MTF-02P sensor. Fixed at 115200 by the hardware — do not change.",
+
+    "takeoff_altitude_m": 1.5,
+    "takeoff_altitude_m_note": "Target hover altitude in metres after arming. ~1.5m (5 feet) gives enough clearance for indoor scanning.",
+
+    "scan_yaw_rate_dps": 20.0,
+    "scan_yaw_rate_dps_note": "Yaw spin rate in degrees per second during the board scan. 20 dps = one full rotation in 18 seconds. Slower = more time per frame, less likely to miss the board.",
+
+    "scan_timeout_s": 60.0,
+    "scan_timeout_s_note": "If no dirty board is detected within this many seconds, the drone aborts the scan and returns home.",
+
+    "approach_stop_dist_m": 0.5,
+    "approach_stop_dist_m_note": "The drone stops its forward approach when the MTF-02P range sensor reads this distance (metres) to the board. Set to the length of the wiper arm reach.",
+
+    "approach_kp": 0.4,
+    "approach_kp_note": "Proportional gain for lateral and vertical camera-centering. Higher = more aggressive correction. Tune if the drone oscillates sideways.",
+
+    "approach_kp_forward": 0.5,
+    "approach_kp_forward_note": "Proportional gain for forward speed during Phase 2 approach. vx = kp_forward * (dist - stop_dist). Higher = faster initial approach, slows naturally to zero at stop distance.",
+
+    "align_threshold_px": 40,
+    "align_threshold_px_note": "Phase 1 alignment threshold in pixels. Drone will not begin moving forward until the board centre is within this many pixels of frame centre in both axes.",
+
+    "approach_max_speed_ms": 0.3,
+    "approach_max_speed_ms_note": "Hard cap on velocity in any axis during approach (m/s). The proportional controller will never exceed this regardless of distance.",
+
+    "approach_cautious_speed_ms": 0.05,
+    "approach_cautious_speed_ms_note": "Forward speed used when the range sensor has not yet returned a valid reading. Intentionally very slow — the drone creeps forward until the sensor confirms distance.",
+
+    "pump_gpio_pin": null,
+    "pump_gpio_pin_note": "BCM GPIO pin number on the Pi wired to the pump relay IN terminal. Example: 17. Assign once the relay is physically connected.",
+
+    "pump_duration_s": 5.0,
+    "pump_duration_s_note": "How long to run the pump during the CLEAN state (seconds). Runs before the wiper sweep.",
+
+    "frame_width_px": 1920,
+    "frame_width_px_note": "Frame width used by the approach proportional controller. Keep in sync with the resolution setting above.",
+
+    "frame_height_px": 1080,
+    "frame_height_px_note": "Frame height used by the approach proportional controller. Keep in sync with the resolution setting above."
+  },
+
+  "range_sensor": {
+    "_note": "VL53L3CX ToF forward range sensor on Pi I2C bus. Wiring: VIN→3.3V(pin1), GND→GND(pin6), SDA→GPIO2(pin3), SCL→GPIO3(pin5). Enable I2C: sudo raspi-config → Interface Options → I2C → Enable. Verify: sudo i2cdetect -y 1 (should show 0x29).",
+    "i2c_address": 41,
+    "i2c_address_note": "Default I2C address is 0x29 (decimal 41). This field takes a decimal integer — if your sensor was remapped (e.g. to 0x2A), enter 42. Change only if the XSHUT pin was used to remap the address."
+  },
+
+  "wiper": {
+    "_note": "Wiper arm settings (wiper.py). Actuator type TBD — implement wiper.py once mechanism is confirmed. The arm extends against the board, sweeps, then retracts.",
+
+    "wiper_gpio_pin": null,
+    "wiper_gpio_pin_note": "BCM GPIO pin number on the Pi wired to the wiper arm control wire. Example: 18. Assign once the mechanism is physically connected.",
+
+    "home_angle": 90.0,
+    "home_angle_note": "Wiper arm position when fully retracted and clear of the board (degrees, 0-180).",
+
+    "press_angle": 45.0,
+    "press_angle_note": "Wiper arm position when extended and pressed against the board. Tune based on physical arm geometry.",
+
+    "sweep_left": 30.0,
+    "sweep_left_note": "Left limit of the wipe sweep arc (degrees). Set to keep the wipe within the board edges.",
+
+    "sweep_right": 150.0,
+    "sweep_right_note": "Right limit of the wipe sweep arc (degrees). Set to keep the wipe within the board edges.",
+
+    "sweep_passes": 2,
+    "sweep_passes_note": "Number of left-right passes during a single wipe cycle. More passes = cleaner board, longer cleaning time.",
+
+    "sweep_speed": 0.01,
+    "sweep_speed_note": "Delay in seconds between each 1-degree step during the sweep. Lower = faster sweep. 0.01 = ~1.5 seconds per full sweep at 150-degree range."
+  }
+}

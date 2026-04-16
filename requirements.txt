@@ -1,0 +1,35 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# AeroClean — Python dependencies
+#
+# Install on Raspberry Pi OS Bookworm (Python 3.11+):
+#   pip install -r requirements.txt
+#
+# picamera2 is NOT listed here because it must be installed via apt:
+#   sudo apt install python3-picamera2
+# See requirements_pi.txt for full Pi setup instructions.
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Core computer vision
+opencv-python>=4.9.0
+numpy>=1.26.0
+
+# OCR (Model 1)
+pytesseract>=0.3.10
+# Also install the Tesseract binary:
+#   Raspberry Pi / Debian:  sudo apt install tesseract-ocr
+#   macOS:                  brew install tesseract
+#   Windows:                https://github.com/UB-Mannheim/tesseract/wiki
+
+# Object detection (Model 2)
+ultralytics>=8.3.0
+
+# MAVLink / drone mission (mission mode only)
+dronekit>=2.9.2
+pymavlink>=2.4.41
+# RPi.GPIO is Pi-only — install manually on the Pi:
+#   pip install RPi.GPIO
+
+# VL53L3CX ToF range sensor (mission mode only)
+adafruit-circuitpython-vl53l4cd>=1.3.0
+adafruit-blinka>=8.0.0
+# Both packages require hardware I2C — gracefully no-op on non-Pi systems

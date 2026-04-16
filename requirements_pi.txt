@@ -1,0 +1,99 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# AeroClean — Raspberry Pi 5 full setup
+#
+# Run these commands on a fresh RPi OS Bookworm install.
+# ─────────────────────────────────────────────────────────────────────────────
+
+# 1. System packages
+# ------------------
+# sudo apt update && sudo apt upgrade -y
+# sudo apt install -y python3-picamera2 tesseract-ocr libcap-dev i2c-tools
+
+# 2. Python packages
+# ------------------
+# pip install -r requirements.txt
+
+# 3. (Optional) Verify camera is detected
+# ----------------------------------------
+# libcamera-hello --list-cameras
+# Expected output: "Available cameras" with IMX708 listed
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Package notes
+# ─────────────────────────────────────────────────────────────────────────────
+
+# picamera2 — installed via apt (not pip) to get the correct libcamera bindings
+# tesseract-ocr — Tesseract binary (OCR engine), pytesseract wraps this
+
+# ultralytics on Pi 5 — NCNN export runs on CPU only.
+# Install normally with pip; no CUDA needed on the Pi.
+# For faster startup you can also install ncnn separately:
+#   pip install ncnn
+
+# opencv-python on Pi — the pip version works fine on Pi 5 Bookworm.
+# If you hit import errors, try the headless variant instead:
+#   pip install opencv-python-headless
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Mission mode — MAVLink drone control
+# ─────────────────────────────────────────────────────────────────────────────
+
+# 4. Mission mode Python packages
+# --------------------------------
+# pip install dronekit pymavlink RPi.GPIO
+
+# dronekit   — ArduPilot companion computer library (UART over /dev/ttyAMA0)
+# pymavlink  — direct MAVLink parsing for MTF-02P sensor on /dev/ttyAMA1
+# RPi.GPIO   — pump relay control via BCM GPIO pin
+
+# 5. UART setup (Pi 5)
+# ---------------------
+# Two UARTs are needed: one for the ArduPilot FC, one for the MTF-02P sensor.
+#
+# In /boot/firmware/config.txt, add:
+#   enable_uart=1
+#   dtoverlay=uart0          # enables /dev/ttyAMA0 → ArduPilot FC
+#   dtoverlay=uart2          # enables /dev/ttyAMA2 → MTF-02P sensor
+#                            # (use uart3, uart4, or uart5 if uart2 is taken)
+#
+# Disable the serial login shell so /dev/ttyAMA0 is free for MAVLink:
+#   sudo raspi-config
+#   → Interface Options → Serial Port
+#   → "Login shell over serial?" → No
+#   → "Enable serial port hardware?" → Yes
+#
+# Add your user to the dialout group:
+#   sudo usermod -aG dialout $USER
+#   (log out and back in for this to take effect)
+#
+# Update config.json "mission" section with the correct UART paths, e.g.:
+#   "mavlink_uart": "/dev/ttyAMA0"
+#   "sensor_uart":  "/dev/ttyAMA2"
+
+# 6. VL53L3CX ToF range sensor (I2C)
+# ------------------------------------
+# Enable I2C on the Pi:
+#   sudo raspi-config → Interface Options → I2C → Enable
+#   (reboot after enabling)
+#
+# Verify the sensor is detected:
+#   sudo i2cdetect -y 1
+#   Expected: value at address 0x29
+#   If nothing shows, check VIN/GND/SDA/SCL wiring.
+#
+# Wiring (Pi GPIO header):
+#   Sensor VIN → Pin 1  (3.3V)
+#   Sensor GND → Pin 6  (GND)
+#   Sensor SDA → Pin 3  (GPIO 2)
+#   Sensor SCL → Pin 5  (GPIO 3)
+#
+# The adafruit-circuitpython-vl53l4cd and adafruit-blinka packages are
+# installed via requirements.txt.  adafruit-blinka also requires:
+#   pip install RPi.GPIO  (already listed above)
+
+# 7. ArduPilot FC serial port setup
+# -----------------------------------
+# On the FC, configure the serial port connected to the Pi:
+#   SERIALx_BAUD    = 57    (57600 baud)
+#   SERIALx_PROTOCOL = 2   (MAVLink 2)
+# Set x to whichever TELEM or UART port is wired to the Pi.

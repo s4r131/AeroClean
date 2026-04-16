@@ -1,0 +1,19 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# AeroClean — YOLO11n dataset configuration
+#
+# Used by train_colab.ipynb during model.train().
+# Update the paths before training on your own machine.
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Paths are relative to where ultralytics looks for data.
+# In Colab, update these to your Google Drive mount path.
+path: ../           # root of the dataset (project root)
+train: images/train
+val:   images/val
+test:  images/test
+
+# Class names (order must match label indices 0, 1, ...)
+nc: 2
+names:
+  0: clean_board
+  1: dirty_board
