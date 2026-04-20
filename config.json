@@ -1,0 +1,156 @@
+{
+  "_note": "All hardware-dependent values (UART ports, GPIO pins) are null until wired. The code will error clearly at runtime if a null value is used in mission mode.",
+
+  "_s1": "── Camera ───────────────────────────────────────────────────────────────",
+
+  "resolution": [1920, 1080],
+  "resolution_note": "Camera capture resolution [width, height]. 1920x1080 (full HD) is the IMX708 default and gives the best image quality. Lower to [1280, 720] or [960, 540] if frame capture is a bottleneck — YOLO resizes internally to 640x640 so inference time is barely affected, but OCR and display will be faster. If you change this, update frame_width_px and frame_height_px in the mission block to match.",
+  
+  "framerate": 30,
+  "framerate_note": "Camera frames per second. 30 is the IMX708 default. Reduce to 15 on a heavily loaded Pi to free CPU between frames.",
+
+
+  "_s2": "── OCR  (Model 1 — Tesseract) ───────────────────────────────────────────",
+
+  "board_roi": null,
+  "board_roi_note": "Optional [x, y, w, h] crop rectangle. Limits Tesseract to the board area only — the single biggest OCR speedup if the board occupies a known region of the frame. null = full frame.",
+
+  "ocr_interval_s": 2.5,
+  "ocr_interval_s_note": "Minimum seconds between Tesseract runs. Frames between runs return the cached result instantly. Raise to 3.0–4.0 to reduce CPU load further; lower to 1.5 for more responsive detection.",
+
+  "ocr_scale": 0.5,
+  "ocr_scale_note": "Scale factor applied before OCR preprocessing. 0.5 = 960x540 from 1920x1080. Try 0.25 (480x270) if OCR is still slow — whiteboard marker text is large enough at quarter resolution. Do not go below 0.25 or word detection degrades.",
+
+
+  "_s3": "── YOLO  (Model 2 — NCNN object detector) ───────────────────────────────",
+
+  "yolo_weights": "weights/best_ncnn_model",
+  "yolo_weights_note": "Path to the exported NCNN model directory (contains *.param and *.bin). Train via train/train_colab.ipynb, export to NCNN format, then copy the output folder here.",
+
+  "yolo_conf": 0.45,
+  "yolo_conf_note": "Detection confidence threshold (0.0–1.0). Detections below this score are ignored. Override at runtime with --conf flag. Lower to 0.35 if the board is being missed; raise to 0.55 to reduce false positives.",
+
+
+  "_s4": "── Display / Output ─────────────────────────────────────────────────────",
+
+  "display": true,
+  "display_note": "Show live OpenCV window during inference and mission. Set to false on a headless Pi (no monitor connected) — OpenCV will crash if true when no display is available.",
+
+  "output_dir": "output",
+  "output_dir_note": "Directory for annotated frames saved with --save flag (created automatically). Not used in mission mode.",
+
+
+  "_s5": "── Range sensor ─────────────────────────────────────────────────────────",
+
+  "range_sensor": {
+    "_note": "Forward range sensor used by the mission approach controller and sensor_ocr_test.py. Set type to match your hardware — sensor A uses I2C, sensor B uses UART.",
+
+    "type": "a",
+    "type_note": "Which range sensor is wired: 'a' = VL53L3CX (I2C, default)  |  'b' = TF-Luna / TFMini (UART). Sensor B also requires tf_sensor.uart to be set.",
+
+    "i2c_address": 41,
+    "i2c_address_note": "Sensor A only. Default I2C address is 0x29 (decimal 41). Only change if the XSHUT pin was used to remap the address. Wiring: VIN→3.3V (pin 1), GND→GND (pin 6), SDA→GPIO2 (pin 3), SCL→GPIO3 (pin 5).",
+
+    "timing_budget_ms": 50,
+    "timing_budget_ms_note": "Sensor A only. Measurement timing budget in milliseconds — controls speed vs accuracy tradeoff. Lower = faster readings, less accurate; higher = slower, more accurate. Valid range: 10–200 ms. 50 ms gives ~20 readings/s, good for indoor approach. Raise to 100 ms if range readings are unstable."
+  },
+
+
+  "_s6": "── TF-Luna / TFMini (sensor B — UART range sensor) ──────────────────────",
+
+  "tf_sensor": {
+    "_note": "Settings for the TF-Luna / TFMini UART range sensor. Used when range_sensor.type is 'b'. Also used by sensor_tf_test.py for standalone testing. Leave uart null if not using a TF-series sensor.",
+
+    "uart": null,
+    "uart_note": "UART device path for the TF sensor, e.g. /dev/ttyAMA4. Find with: ls -l /dev/ttyAMA* after enabling the overlay in /boot/firmware/config.txt. Can be overridden at runtime with --uart flag.",
+
+    "baud": 115200,
+    "baud_note": "Baud rate for the TF-Luna / TFMini. Fixed at 115200 by hardware — do not change."
+  },
+
+
+  "_s7": "── Wiper arm ────────────────────────────────────────────────────────────",
+
+  "wiper": {
+    "_note": "Wiper arm settings (wiper.py). Actuator type TBD — implement wiper.py once the mechanism is confirmed. The arm extends against the board, sweeps left-right, then retracts.",
+
+    "wiper_gpio_pin": null,
+    "wiper_gpio_pin_note": "BCM GPIO pin number wired to the wiper arm control wire. Example: 18. Assign once the mechanism is physically connected.",
+
+    "home_angle": 90.0,
+    "home_angle_note": "Arm position when fully retracted and clear of the board (degrees, 0–180).",
+
+    "press_angle": 45.0,
+    "press_angle_note": "Arm position when extended and pressed against the board. Tune based on physical geometry.",
+
+    "sweep_left": 30.0,
+    "sweep_left_note": "Left limit of the wipe arc (degrees). Keep within board edges.",
+
+    "sweep_right": 150.0,
+    "sweep_right_note": "Right limit of the wipe arc (degrees). Keep within board edges.",
+
+    "sweep_passes": 2,
+    "sweep_passes_note": "Number of left-right passes per clean cycle. More passes = cleaner board, longer cleaning time.",
+
+    "sweep_speed": 0.01,
+    "sweep_speed_note": "Delay in seconds per 1-degree step. 0.01 = ~1.5 s per full 120-degree sweep. Lower = faster arm movement."
+  },
+
+
+  "_s8": "── Mission ──────────────────────────────────────────────────────────────",
+
+  "mission": {
+    "_note": "Autonomous drone mission settings (python main.py --mode mission). All null values must be filled in before running. Run 'ls -l /dev/ttyAMA*' on the Pi to find UART device paths.",
+
+    "mavlink_uart": null,
+    "mavlink_uart_note": "UART port connecting the Pi to the ArduPilot flight controller. Example: /dev/ttyAMA0. Must match the FC TELEM port — see README Setup Step 3.",
+
+    "mavlink_baud": 57600,
+    "mavlink_baud_note": "Baud rate for the ArduPilot MAVLink connection. Must match SERIALx_BAUD on the FC. 57600 is the ArduPilot default for companion computers.",
+
+    "sensor_uart": null,
+    "sensor_uart_note": "UART port connecting the Pi to the MicoAir MTF-02P optical flow sensor. Must be a different port from mavlink_uart. Example: /dev/ttyAMA3.",
+
+    "sensor_baud": 115200,
+    "sensor_baud_note": "Baud rate for the MTF-02P. Fixed at 115200 by hardware — do not change.",
+
+    "takeoff_altitude_m": 1.5,
+    "takeoff_altitude_m_note": "Target hover altitude in metres after arming. 1.5 m gives clearance for indoor scanning without hitting the ceiling.",
+
+    "scan_yaw_rate_dps": 20.0,
+    "scan_yaw_rate_dps_note": "Yaw spin rate in degrees/second during SCAN. 20 dps = one full rotation in 18 s. Slower means more time per frame and less chance of missing the board.",
+
+    "scan_timeout_s": 60.0,
+    "scan_timeout_s_note": "Abort SCAN and RTL if no dirty board is found within this many seconds.",
+
+    "approach_stop_dist_m": 0.5,
+    "approach_stop_dist_m_note": "Stop forward approach when the range sensor reads this distance to the board (metres). Set to the reach of the wiper arm.",
+
+    "approach_kp": 0.4,
+    "approach_kp_note": "Proportional gain for lateral and vertical centering during APPROACH. Tune down if the drone oscillates sideways.",
+
+    "approach_kp_forward": 0.5,
+    "approach_kp_forward_note": "Proportional gain for forward speed: vx = kp_forward × (dist − stop_dist). Naturally decelerates to zero at the board. Tune down if approach feels jerky.",
+
+    "align_threshold_px": 40,
+    "align_threshold_px_note": "Phase 1 tolerance: drone will not move forward until the board centre is within this many pixels of frame centre on both axes.",
+
+    "approach_max_speed_ms": 0.3,
+    "approach_max_speed_ms_note": "Hard velocity cap on any axis during approach (m/s). The P controller never exceeds this regardless of distance.",
+
+    "approach_cautious_speed_ms": 0.05,
+    "approach_cautious_speed_ms_note": "Forward creep speed used when the range sensor has not yet returned a valid reading. Intentionally very slow.",
+
+    "pump_gpio_pin": null,
+    "pump_gpio_pin_note": "BCM GPIO pin wired to the pump relay IN terminal. Example: 17. Assign once the relay is physically connected.",
+
+    "pump_duration_s": 5.0,
+    "pump_duration_s_note": "How long to run the pump during CLEAN (seconds). Runs before the wiper sweep.",
+
+    "frame_width_px": 1920,
+    "frame_width_px_note": "Frame width used by the approach P controller to compute pixel error from centre. Must match resolution[0] above.",
+
+    "frame_height_px": 1080,
+    "frame_height_px_note": "Frame height used by the approach P controller. Must match resolution[1] above."
+  }
+}

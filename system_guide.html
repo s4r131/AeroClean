@@ -1,0 +1,1404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>AeroClean — System Guide</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden;font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:#f0f4f8;color:#1a202c;font-size:15px;-webkit-font-smoothing:antialiased}
+
+@keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+@keyframes bob{0%,100%{transform:translateY(0) rotate(-2deg)}50%{transform:translateY(-10px) rotate(2deg)}}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(.92)}}
+@keyframes pulseRing{0%{box-shadow:0 0 0 0 #10b98140}70%{box-shadow:0 0 0 9px transparent}100%{box-shadow:0 0 0 0 transparent}}
+@keyframes pulseRingRed{0%{box-shadow:0 0 0 0 #ef444440}70%{box-shadow:0 0 0 9px transparent}100%{box-shadow:0 0 0 0 transparent}}
+@keyframes dashMove{to{stroke-dashoffset:-16}}
+@keyframes slideRight{0%,100%{transform:translateX(0)}50%{transform:translateX(4px)}}
+
+/* ── Top bar ── */
+#topbar{position:fixed;top:0;left:0;right:0;height:56px;background:#fff;border-bottom:1px solid #e2e8f0;display:flex;align-items:center;padding:0 22px;z-index:200;gap:14px;box-shadow:0 2px 8px rgba(0,0,0,.06)}
+.logo{font-weight:900;font-size:15px;color:#0f172a;letter-spacing:.03em;flex-shrink:0}
+.logo span{background:linear-gradient(135deg,#2563eb,#7c3aed);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+#stepper{display:flex;align-items:center;gap:0;flex:1;justify-content:center;overflow:hidden}
+.step-dot{display:flex;align-items:center;cursor:pointer;position:relative}
+.step-dot .num{width:28px;height:28px;border-radius:50%;border:2px solid #e2e8f0;background:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#94a3b8;transition:all .25s;position:relative;z-index:1}
+.step-dot:hover .num{border-color:#3b82f6;color:#2563eb;transform:scale(1.1)}
+.step-dot.active .num{background:linear-gradient(135deg,#3b82f6,#2563eb);border-color:#2563eb;color:#fff;box-shadow:0 0 0 4px #3b82f620}
+.step-dot.done .num{background:#10b981;border-color:#10b981;color:#fff}
+.step-dot.done .num::after{content:'✓';font-size:11px}
+.step-dot.done .num span{display:none}
+.step-label{font-size:9px;color:#94a3b8;position:absolute;bottom:-17px;white-space:nowrap;left:50%;transform:translateX(-50%);font-weight:600;letter-spacing:.02em}
+.step-dot.active .step-label{color:#2563eb;font-weight:700}
+.step-dot.done .step-label{color:#10b981}
+.step-line{width:22px;height:2px;background:#e2e8f0;transition:background .4s}
+#progress-ring{margin-left:auto;flex-shrink:0}
+
+/* ── Viewport ── */
+#viewport{position:fixed;top:56px;left:0;right:0;bottom:64px;overflow:hidden}
+.screen{position:absolute;top:0;left:0;right:0;bottom:0;padding:22px 38px 28px;overflow-y:auto;display:flex;flex-direction:column;opacity:0;pointer-events:none;transform:translateX(56px);transition:opacity .32s cubic-bezier(.4,0,.2,1),transform .32s cubic-bezier(.4,0,.2,1)}
+.screen.active{opacity:1;pointer-events:all;transform:translateX(0)}
+.screen.exit-left{opacity:0;transform:translateX(-56px)}
+.screen.active .ai{animation:fadeUp .38s ease both}
+.screen.active .ai:nth-child(1){animation-delay:.04s}
+.screen.active .ai:nth-child(2){animation-delay:.09s}
+.screen.active .ai:nth-child(3){animation-delay:.14s}
+.screen.active .ai:nth-child(4){animation-delay:.19s}
+.screen.active .ai:nth-child(5){animation-delay:.24s}
+
+/* ── Footer ── */
+#footer{position:fixed;bottom:0;left:0;right:0;height:64px;background:#fff;border-top:1px solid #e2e8f0;display:flex;align-items:center;justify-content:space-between;padding:0 30px;box-shadow:0 -2px 8px rgba(0,0,0,.04)}
+.btn{border:none;border-radius:8px;padding:10px 22px;font-size:13.5px;font-weight:700;cursor:pointer;transition:all .16s;letter-spacing:.01em}
+.btn-ghost{background:#f1f5f9;color:#64748b;border:1px solid #e2e8f0}
+.btn-ghost:hover{background:#e2e8f0;color:#334155}
+.btn-primary{background:linear-gradient(135deg,#3b82f6,#2563eb);color:#fff;box-shadow:0 2px 8px #3b82f640}
+.btn-primary:hover{box-shadow:0 4px 16px #3b82f650;filter:brightness(1.07)}
+.btn:disabled{opacity:.35;cursor:not-allowed}
+#step-counter{font-size:12.5px;color:#94a3b8;font-weight:700}
+
+/* ── Typography ── */
+h1{font-size:23px;font-weight:900;color:#0f172a;margin-bottom:6px;line-height:1.15;letter-spacing:-.02em}
+h1 .accent{background:linear-gradient(135deg,#2563eb,#7c3aed);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+h2{font-size:17px;font-weight:800;color:#1e293b;margin-bottom:6px}
+h3{font-size:10.5px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.12em;margin:16px 0 9px}
+p{color:#374151;line-height:1.68;margin-bottom:9px;font-size:13.5px}
+code{font-family:'Cascadia Code','Fira Code','Consolas',monospace;font-size:12px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:5px;padding:1px 6px;color:#1d4ed8}
+
+/* ── Cards ── */
+.card{background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:18px;box-shadow:0 1px 4px rgba(0,0,0,.05)}
+.card-h{transition:all .2s cubic-bezier(.4,0,.2,1)}
+.card-h:hover{transform:translateY(-3px);box-shadow:0 8px 24px rgba(0,0,0,.09);border-color:#bfdbfe}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+.grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+
+/* ── Callouts ── */
+.callout{border-radius:10px;padding:11px 15px;display:flex;gap:11px;font-size:13px;margin:10px 0;line-height:1.55}
+.callout .icon{font-size:16px;flex-shrink:0;margin-top:1px}
+.callout.info{background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8}
+.callout.warn{background:#fffbeb;border:1px solid #fde68a;color:#92400e}
+.callout.tip{background:#f0fdf4;border:1px solid #bbf7d0;color:#166534}
+.callout.danger{background:#fef2f2;border:1px solid #fecaca;color:#991b1b}
+.callout strong{color:inherit}
+
+/* ── Code blocks ── */
+.code-block{background:#1a1f2e;border:1px solid #2d3748;border-radius:12px;overflow:hidden;margin:10px 0;box-shadow:0 4px 14px rgba(0,0,0,.14)}
+.code-header{display:flex;align-items:center;justify-content:space-between;padding:7px 14px;background:#141821;border-bottom:1px solid #2d3748}
+.code-lang{font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#64748b}
+.copy-btn{font-size:11px;color:#94a3b8;background:#1e293b;border:1px solid #334155;border-radius:5px;padding:2px 10px;cursor:pointer;transition:all .15s;font-weight:600}
+.copy-btn:hover{background:#334155;color:#e2e8f0}
+.copy-btn.ok{color:#34d399;border-color:#34d39955;background:#0f2a1f}
+pre{padding:13px 15px;font-family:'Cascadia Code','Fira Code','Consolas',monospace;font-size:12.5px;line-height:1.65;color:#e2e8f0;overflow-x:auto;tab-size:2;white-space:pre}
+.cm{color:#6a737d;font-style:italic}.kw{color:#f97583}.str{color:#9ecbff}.fn{color:#b392f0}.nu{color:#79b8ff}.fl{color:#ffab70}
+
+/* ── Tables ── */
+.dep-table{width:100%;border-collapse:collapse;font-size:13px}
+.dep-table thead tr{background:#f8fafc;border-bottom:2px solid #e2e8f0}
+.dep-table th{text-align:left;padding:8px 11px;font-size:9.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#64748b}
+.dep-table td{padding:8px 11px;border-bottom:1px solid #f1f5f9;color:#475569;vertical-align:top}
+.dep-table tr:last-child td{border-bottom:none}
+.dep-table tr:hover td{background:#f8fafc}
+.dep-table td strong{color:#1e293b}
+.badge{display:inline-block;font-size:10px;font-weight:700;padding:2px 8px;border-radius:5px;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap}
+.br{background:#fee2e2;color:#dc2626}.bp{background:#eff6ff;color:#2563eb}.bw{background:#fffbeb;color:#92400e}.bg{background:#f0fdf4;color:#16a34a}.bv{background:#f5f3ff;color:#7c3aed}
+
+/* ── Tabs ── */
+.tab-bar{display:flex;border-bottom:2px solid #e2e8f0}
+.tab-btn{padding:8px 17px;font-size:12.5px;font-weight:700;cursor:pointer;color:#64748b;border-bottom:2px solid transparent;margin-bottom:-2px;background:none;border-top:none;border-left:none;border-right:none;transition:all .15s}
+.tab-btn:hover{color:#334155;background:#f8fafc}
+.tab-btn.active{color:#2563eb;border-bottom-color:#2563eb}
+.tab-panel{display:none}.tab-panel.active{display:block}
+
+/* ── Flow ── */
+.flow{display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin:10px 0}
+.fn2{background:#fff;border:1.5px solid #e2e8f0;border-radius:8px;padding:7px 14px;font-size:12px;color:#334155;font-weight:700;box-shadow:0 1px 3px rgba(0,0,0,.04);transition:all .2s}
+.fn2:hover{border-color:#93c5fd;transform:translateY(-2px);box-shadow:0 4px 12px rgba(59,130,246,.15)}
+.fn2.hl{background:linear-gradient(135deg,#eff6ff,#dbeafe);border-color:#93c5fd;color:#1d4ed8}
+.fn2.gr{background:linear-gradient(135deg,#f0fdf4,#dcfce7);border-color:#86efac;color:#166534}
+.fn2.ye{background:linear-gradient(135deg,#fefce8,#fef9c3);border-color:#fde047;color:#854d0e}
+.fn2.re{background:linear-gradient(135deg,#fef2f2,#fee2e2);border-color:#fca5a5;color:#991b1b}
+.fa{color:#94a3b8;font-size:17px;animation:slideRight 1.2s ease-in-out infinite alternate}
+
+/* ── Sensor pills ── */
+.sa{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe}
+.sb{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;background:#f5f3ff;color:#7c3aed;border:1px solid #ddd6fe}
+
+/* ── Pulse dot ── */
+.pdot{display:inline-block;width:8px;height:8px;border-radius:50%;vertical-align:middle;margin-right:5px}
+.pdot.g{background:#10b981;animation:pulseRing 2s infinite}
+.pdot.r{background:#ef4444;animation:pulseRingRed 2s infinite}
+
+/* ── Hero band ── */
+.hero{background:linear-gradient(135deg,#f0f9ff 0%,#eff6ff 50%,#faf5ff 100%);border:1px solid #dde9ff;border-radius:16px;padding:18px 22px;margin-bottom:16px;position:relative;overflow:hidden}
+.hero::after{content:'';position:absolute;top:-30px;right:-30px;width:120px;height:120px;background:radial-gradient(circle,#3b82f630,transparent 70%);pointer-events:none}
+
+/* ── Stat cards ── */
+.stat{background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:14px 16px;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,.04)}
+.stat-v{font-size:24px;font-weight:900;color:#0f172a;line-height:1.1}
+.stat-l{font-size:10px;color:#94a3b8;font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-top:3px}
+
+/* ── Drone SVG ── */
+.drone-wrap{position:absolute;right:20px;top:12px;animation:bob 3.5s ease-in-out infinite;opacity:.9;pointer-events:none}
+
+/* ── Step items ── */
+.si{display:flex;gap:11px;padding:9px 13px;border-radius:9px;background:#f8fafc;border:1px solid #e2e8f0;font-size:13px;color:#334155;margin-bottom:5px;transition:all .18s;align-items:flex-start}
+.si:hover{background:#eff6ff;border-color:#bfdbfe}
+.sn{color:#2563eb;font-weight:900;min-width:18px;font-size:12.5px;margin-top:1px}
+
+/* ── Checklist ── */
+.cl-item{display:flex;align-items:flex-start;gap:10px;padding:8px 12px;border-radius:8px;font-size:13px;color:#374151;border:1px solid #e8edf3;background:#fafbfc;margin-bottom:5px;cursor:pointer;transition:all .15s}
+.cl-item:hover{background:#eff6ff;border-color:#bfdbfe}
+.cl-box{width:17px;height:17px;border-radius:4px;border:2px solid #cbd5e1;flex-shrink:0;margin-top:1px;transition:all .15s;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:900;color:transparent}
+.cl-item.chk .cl-box{background:#10b981;border-color:#10b981;color:#fff}
+.cl-item.chk{opacity:.6;text-decoration:line-through;text-decoration-color:#94a3b8}
+
+/* ── Arch ── */
+.arch-box{background:#1a1f2e;border:1px solid #2d3748;border-radius:12px;padding:15px;font-family:'Cascadia Code','Fira Code',monospace;font-size:11.5px;color:#e2e8f0;line-height:1.75;overflow-x:auto;white-space:pre}
+.pi{color:#60a5fa}.fc{color:#34d399}.ua{color:#f97583}.i2{color:#fbbf24}.gp{color:#c084fc}
+
+/* ── Command builder ── */
+.cmd-builder{background:#fff;border:1px solid #e2e8f0;border-radius:13px;padding:16px;box-shadow:0 2px 8px rgba(0,0,0,.05)}
+.cmd-row{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:12px;align-items:flex-end}
+.cmd-label{font-size:9.5px;color:#64748b;font-weight:700;margin-bottom:4px;text-transform:uppercase;letter-spacing:.1em}
+select,input[type=number]{background:#f8fafc;border:1.5px solid #e2e8f0;border-radius:7px;color:#1e293b;padding:7px 10px;font-size:13px;cursor:pointer;font-weight:600;transition:border .15s}
+select:focus,input[type=number]:focus{outline:none;border-color:#3b82f6;box-shadow:0 0 0 3px #3b82f615}
+.cmd-out{background:#141821;border:1px solid #2d3748;border-radius:9px;padding:11px 14px;font-family:'Cascadia Code',monospace;font-size:12.5px;color:#e2e8f0;display:flex;align-items:center;justify-content:space-between;gap:10px}
+
+/* ── Tip card ── */
+.tc{background:#fff;border:1px solid #e2e8f0;border-radius:11px;padding:13px 15px;box-shadow:0 1px 3px rgba(0,0,0,.04);transition:all .2s}
+.tc:hover{transform:translateY(-2px);box-shadow:0 6px 18px rgba(0,0,0,.09);border-color:#bfdbfe}
+.ti{font-size:20px;margin-bottom:5px}
+.tc h4{font-size:12.5px;font-weight:700;color:#1e293b;margin-bottom:3px}
+.tc p{font-size:12px;color:#64748b;margin:0;line-height:1.5}
+
+/* ── Divider ── */
+.div{height:1px;background:linear-gradient(90deg,transparent,#e2e8f0,transparent);margin:14px 0}
+
+/* ── Labeling guide additions ── */
+@keyframes pop{0%{transform:scale(1)}50%{transform:scale(1.18)}100%{transform:scale(1)}}
+.cls-clean{display:inline-flex;align-items:center;gap:5px;padding:3px 11px;border-radius:20px;font-size:12px;font-weight:700;background:#f0fdf4;color:#166534;border:1.5px solid #86efac}
+.cls-dirty{display:inline-flex;align-items:center;gap:5px;padding:3px 11px;border-radius:20px;font-size:12px;font-weight:700;background:#fef2f2;color:#991b1b;border:1.5px solid #fca5a5}
+#canvas-wrap{position:relative;display:inline-block;border-radius:12px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,.12);cursor:crosshair;user-select:none}
+#board-canvas{display:block}
+#label-sidebar{display:flex;flex-direction:column;gap:8px;min-width:220px}
+.label-entry{background:#fff;border:1.5px solid #e2e8f0;border-radius:10px;padding:9px 12px;font-size:12.5px;display:flex;align-items:center;justify-content:space-between;gap:8px;animation:pop .25s ease}
+.label-entry.clean{border-color:#86efac;background:#f0fdf4}
+.label-entry.dirty{border-color:#fca5a5;background:#fef2f2}
+.label-del{background:none;border:none;color:#94a3b8;cursor:pointer;font-size:15px;line-height:1;padding:0 2px;transition:color .15s}
+.label-del:hover{color:#ef4444}
+.class-toggle{display:flex;gap:8px;margin-bottom:14px}
+.cls-btn{flex:1;padding:10px 14px;border-radius:10px;border:2px solid #e2e8f0;background:#fff;font-size:13px;font-weight:700;cursor:pointer;transition:all .18s;display:flex;align-items:center;gap:7px;justify-content:center}
+.cls-btn.active-clean{background:#f0fdf4;border-color:#10b981;color:#166534;box-shadow:0 0 0 3px #10b98120}
+.cls-btn.active-dirty{background:#fef2f2;border-color:#ef4444;color:#991b1b;box-shadow:0 0 0 3px #ef444420}
+.cls-btn:not(.active-clean):not(.active-dirty):hover{background:#f8fafc;border-color:#94a3b8}
+.board-thumbs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.board-thumb{border:2px solid #e2e8f0;border-radius:8px;overflow:hidden;cursor:pointer;transition:all .18s;flex-shrink:0}
+.board-thumb:hover{border-color:#3b82f6;transform:scale(1.04)}
+.board-thumb.selected{border-color:#3b82f6;box-shadow:0 0 0 3px #3b82f620}
+.board-thumb canvas{display:block}
+.progress-bar-wrap{background:#e2e8f0;border-radius:4px;height:6px;overflow:hidden;margin-top:8px}
+.progress-bar-fill{height:100%;background:linear-gradient(90deg,#3b82f6,#10b981);border-radius:4px;transition:width .4s ease}
+.rule-card{border-radius:12px;padding:14px 16px;font-size:13px}
+.rule-do{background:#f0fdf4;border:1.5px solid #86efac;color:#166534}
+.rule-dont{background:#fef2f2;border:1.5px solid #fca5a5;color:#991b1b}
+.rule-card strong{display:block;font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px;opacity:.8}
+.rule-card ul{padding-left:16px;line-height:1.7}
+
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:3px}
+</style>
+</head>
+<body>
+
+<!-- ══ TOP BAR ════════════════════════════════════════════════════════ -->
+<div id="topbar">
+  <div class="logo">Aero<span>Clean</span></div>
+  <div id="stepper"></div>
+  <svg id="progress-ring" width="38" height="38" style="flex-shrink:0">
+    <circle cx="19" cy="19" r="15" fill="none" stroke="#e2e8f0" stroke-width="3"/>
+    <circle id="ring-fill" cx="19" cy="19" r="15" fill="none" stroke="url(#rg)" stroke-width="3"
+      stroke-dasharray="94.2" stroke-dashoffset="94.2" stroke-linecap="round"
+      transform="rotate(-90 19 19)" style="transition:stroke-dashoffset .4s"/>
+    <defs><linearGradient id="rg" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#3b82f6"/><stop offset="100%" stop-color="#7c3aed"/></linearGradient></defs>
+    <text id="ring-text" x="19" y="24" text-anchor="middle" fill="#64748b" font-size="9.5" font-weight="700" font-family="system-ui">0%</text>
+  </svg>
+</div>
+
+<!-- ══ VIEWPORT ══════════════════════════════════════════════════════ -->
+<div id="viewport">
+
+<!-- ── Screen 0: Welcome ─────────────────────────────────────────── -->
+<div class="screen active" data-screen="0">
+  <div class="hero ai" style="position:relative;overflow:visible">
+    <div class="drone-wrap">
+      <svg width="72" height="56" viewBox="0 0 72 56" fill="none">
+        <!-- body -->
+        <rect x="22" y="20" width="28" height="16" rx="5" fill="#3b82f6" opacity=".9"/>
+        <rect x="28" y="24" width="16" height="8" rx="3" fill="#1d4ed8"/>
+        <!-- arms -->
+        <line x1="22" y1="24" x2="6" y2="18" stroke="#64748b" stroke-width="2.5" stroke-linecap="round"/>
+        <line x1="22" y1="32" x2="6" y2="38" stroke="#64748b" stroke-width="2.5" stroke-linecap="round"/>
+        <line x1="50" y1="24" x2="66" y2="18" stroke="#64748b" stroke-width="2.5" stroke-linecap="round"/>
+        <line x1="50" y1="32" x2="66" y2="38" stroke="#64748b" stroke-width="2.5" stroke-linecap="round"/>
+        <!-- propellers -->
+        <ellipse cx="6" cy="18" rx="8" ry="3" fill="#94a3b8" opacity=".6"><animateTransform attributeName="transform" type="rotate" from="0 6 18" to="360 6 18" dur=".4s" repeatCount="indefinite"/></ellipse>
+        <ellipse cx="6" cy="38" rx="8" ry="3" fill="#94a3b8" opacity=".6"><animateTransform attributeName="transform" type="rotate" from="360 6 38" to="0 6 38" dur=".4s" repeatCount="indefinite"/></ellipse>
+        <ellipse cx="66" cy="18" rx="8" ry="3" fill="#94a3b8" opacity=".6"><animateTransform attributeName="transform" type="rotate" from="0 66 18" to="360 66 18" dur=".4s" repeatCount="indefinite"/></ellipse>
+        <ellipse cx="66" cy="38" rx="8" ry="3" fill="#94a3b8" opacity=".6"><animateTransform attributeName="transform" type="rotate" from="360 66 38" to="0 66 38" dur=".4s" repeatCount="indefinite"/></ellipse>
+        <!-- camera -->
+        <circle cx="36" cy="38" r="4" fill="#0f172a"/><circle cx="36" cy="38" r="2" fill="#1d4ed8"/>
+        <!-- spray drop -->
+        <ellipse cx="36" cy="47" rx="2" ry="3" fill="#60a5fa" opacity=".7">
+          <animate attributeName="cy" values="44;52;44" dur="1.2s" repeatCount="indefinite"/>
+          <animate attributeName="opacity" values=".7;0;.7" dur="1.2s" repeatCount="indefinite"/>
+        </ellipse>
+      </svg>
+    </div>
+    <h1 style="margin-bottom:4px">AeroClean <span class="accent">System Guide</span></h1>
+    <p style="font-size:14px;max-width:520px;margin:0;color:#475569">Autonomous board-cleaning drone — Raspberry Pi 5 companion computer, YOLO11n detection, Tesseract OCR, ArduPilot GUIDED mode.</p>
+  </div>
+
+  <div class="grid-4 ai" style="margin-bottom:14px">
+    <div class="stat"><div class="stat-v" style="background:linear-gradient(135deg,#2563eb,#7c3aed);-webkit-background-clip:text;-webkit-text-fill-color:transparent">2</div><div class="stat-l">Vision Models</div></div>
+    <div class="stat"><div class="stat-v" style="background:linear-gradient(135deg,#10b981,#059669);-webkit-background-clip:text;-webkit-text-fill-color:transparent">5</div><div class="stat-l">Mission States</div></div>
+    <div class="stat"><div class="stat-v" style="background:linear-gradient(135deg,#f59e0b,#d97706);-webkit-background-clip:text;-webkit-text-fill-color:transparent">3</div><div class="stat-l">UARTs Used</div></div>
+    <div class="stat"><div class="stat-v" style="background:linear-gradient(135deg,#ef4444,#dc2626);-webkit-background-clip:text;-webkit-text-fill-color:transparent">~80ms</div><div class="stat-l">YOLO Latency</div></div>
+  </div>
+
+  <div class="grid-2 ai" style="max-width:820px;align-items:start;gap:14px">
+    <div>
+      <h3 style="margin-top:0">Mission flow</h3>
+      <div class="card" style="padding:14px 18px">
+        <div class="flow" style="margin:0">
+          <div class="fn2 ye">IDLE</div><div class="fa">→</div>
+          <div class="fn2 hl">SCAN</div><div class="fa">→</div>
+          <div class="fn2 hl">APPROACH</div><div class="fa">→</div>
+          <div class="fn2 hl">CLEAN</div><div class="fa">→</div>
+          <div class="fn2">RETURN</div><div class="fa">→</div>
+          <div class="fn2 gr">DONE</div>
+        </div>
+        <div style="margin-top:10px;font-size:12px;color:#94a3b8;display:flex;gap:16px;flex-wrap:wrap">
+          <span>SCAN timeout → RETURN</span>
+          <span>Board lost → SCAN</span>
+          <span>Exception → <span style="color:#ef4444">ABORTED</span></span>
+        </div>
+      </div>
+      <h3>Two vision models</h3>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div class="card card-h" style="display:flex;align-items:center;gap:12px;padding:12px 16px">
+          <div style="width:36px;height:36px;background:linear-gradient(135deg,#eff6ff,#dbeafe);border-radius:9px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:17px">🔤</div>
+          <div><div style="font-weight:700;color:#0f172a;font-size:13px">Model 1 — OCR (Tesseract)</div><div style="color:#64748b;font-size:12px;margin-top:2px">Finds the word <code>"dirty"</code> on the board surface using greyscale → CLAHE → adaptive threshold → morph close</div></div>
+        </div>
+        <div class="card card-h" style="display:flex;align-items:center;gap:12px;padding:12px 16px">
+          <div style="width:36px;height:36px;background:linear-gradient(135deg,#f5f3ff,#ede9fe);border-radius:9px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:17px">🎯</div>
+          <div><div style="font-weight:700;color:#0f172a;font-size:13px">Model 2 — YOLO11n NCNN</div><div style="color:#64748b;font-size:12px;margin-top:2px">Custom-trained detection — classifies board as <code>clean_board</code> or <code>dirty_board</code> with bounding box</div></div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <h3 style="margin-top:0">Quick start</h3>
+      <div class="callout info" style="margin-top:0"><span class="icon">🚀</span><div>Complete <strong>Hardware</strong> and <strong>Setup</strong> screens first, verify all component tests pass, then run the mission.</div></div>
+      <div class="code-block">
+        <div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="cc(this)">Copy</button></div>
+        <pre><span class="cm"># Activate the environment</span>
+source aeroclean_env/bin/activate
+
+<span class="cm"># Run the mission</span>
+python main.py --mode mission</pre>
+      </div>
+      <h3>Range sensor options</h3>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <div class="card" style="padding:10px 14px;display:flex;align-items:center;gap:10px">
+          <span class="sa">Sensor A</span>
+          <div style="font-size:12.5px;color:#374151"><strong>VL53L3CX</strong> — I2C, GPIO 2/3, default</div>
+        </div>
+        <div class="card" style="padding:10px 14px;display:flex;align-items:center;gap:10px">
+          <span class="sb">Sensor B</span>
+          <div style="font-size:12.5px;color:#374151"><strong>TF-Luna / TFMini</strong> — UART, set <code>range_sensor.type = "b"</code></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Screen 1: Hardware ─────────────────────────────────────────── -->
+<div class="screen" data-screen="1">
+  <h1 class="ai">Hardware <span class="accent">Requirements</span></h1>
+  <p class="ai" style="margin-bottom:14px">Gather everything below before starting setup. Verify each item against the checklist on screen 3.</p>
+
+  <div class="grid-2 ai" style="max-width:900px;align-items:start;gap:16px">
+    <div>
+      <h3 style="margin-top:0">Components</h3>
+      <table class="dep-table">
+        <thead><tr><th>Component</th><th>Specification</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Board</strong></td><td>Raspberry Pi 5 — 4 GB or 8 GB RAM</td></tr>
+          <tr><td><strong>Camera</strong></td><td>Camera Module 3 (IMX708) — 12MP, 75° diagonal, CSI ribbon</td></tr>
+          <tr><td><strong>Flight controller</strong></td><td>ArduPilot-compatible FC (e.g. Pixhawk) — TELEM port → Pi UART</td></tr>
+          <tr><td><strong>Flow sensor</strong></td><td>MicoAir MTF-02P optical flow — UART (second Pi UART port)</td></tr>
+          <tr><td><strong>Range sensor</strong></td><td><span class="sa">A</span> VL53L3CX — I2C GPIO 2/3  <em>or</em>  <span class="sb">B</span> TF-Luna/TFMini — UART</td></tr>
+          <tr><td><strong>Pump</strong></td><td>Relay-driven pump — relay IN → BCM GPIO pin (configurable)</td></tr>
+          <tr><td><strong>Wiper</strong></td><td>Wiper arm — control wire → BCM GPIO pin (actuator TBD)</td></tr>
+          <tr><td><strong>OS</strong></td><td>Raspberry Pi OS Bookworm 64-bit — Dec 2023 or later</td></tr>
+          <tr><td><strong>Storage</strong></td><td>32 GB SD card minimum (64 GB recommended)</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Wiring</h3>
+      <table class="dep-table">
+        <thead><tr><th>Pi connection</th><th>Device</th><th>Purpose</th></tr></thead>
+        <tbody>
+          <tr><td>UART <code>/dev/ttyAMAx</code></td><td>ArduPilot FC TELEM</td><td>MAVLink — DroneKit</td></tr>
+          <tr><td>UART <code>/dev/ttyAMAy</code></td><td>MTF-02P</td><td>Optical flow — pymavlink</td></tr>
+          <tr><td>I2C GPIO 2/3 (pins 3/5)</td><td>VL53L3CX <span class="sa">Sensor A</span></td><td>Forward range (I2C)</td></tr>
+          <tr><td>UART <code>/dev/ttyAMAz</code></td><td>TF-Luna/TFMini <span class="sb">Sensor B</span></td><td>Forward range (UART alt.)</td></tr>
+          <tr><td>BCM GPIO (configurable)</td><td>Pump relay IN</td><td>Cleaning trigger</td></tr>
+          <tr><td>BCM GPIO (configurable)</td><td>Wiper arm</td><td>Wiper actuation</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div>
+      <h3 style="margin-top:0">System topology</h3>
+      <div class="arch-box">
+<span class="pi">┌─────────────────────────────────────────┐
+│           Raspberry Pi 5                │
+│                                         │
+│  IMX708 Camera     →  YOLO / OCR        │
+│  MTF-02P (UART)    →  optical flow      │
+│  VL53L3CX (I2C)    →  forward range (A) │
+│  TF-Luna  (UART)   →  forward range (B) │
+│  Mission state machine                  │
+│  GPIO pump pin     →  pump relay        │
+│  GPIO wiper pin    →  wiper arm         │
+│  DroneKit (MAVLink over UART)           │
+└──────────────┬──────────────────────────┘</span>
+               │ <span class="ua">UART — MAVLink</span>
+<span class="fc">┌──────────────▼──────────────────────────┐
+│         ArduPilot FC                    │
+│  Attitude stabilisation (own IMU)       │
+│  Motor control                          │
+│  GUIDED mode — accepts velocity targets │
+└─────────────────────────────────────────┘</span></div>
+
+      <div class="callout info" style="margin-top:10px">
+        <span class="icon">ℹ️</span>
+        <div>ArduPilot handles all low-level stabilisation. The Pi sends body-frame velocity setpoints (<code>SET_POSITION_TARGET_LOCAL_NED</code>) and the FC keeps the drone stable.</div>
+      </div>
+
+      <h3>UART count by config</h3>
+      <div style="display:flex;flex-direction:column;gap:6px;font-size:13px">
+        <div class="card" style="padding:10px 14px"><span class="sa">Sensor A</span> <span style="color:#374151;margin-left:8px">2 UARTs — FC + MTF-02P</span></div>
+        <div class="card" style="padding:10px 14px"><span class="sb">Sensor B</span> <span style="color:#374151;margin-left:8px">3 UARTs — FC + MTF-02P + TF sensor</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Screen 2: Setup ────────────────────────────────────────────── -->
+<div class="screen" data-screen="2">
+  <h1 class="ai">Setup <span class="accent">Guide</span></h1>
+  <p class="ai" style="margin-bottom:14px">Complete all steps in order. Do not run <code>pip install</code> outside the virtual environment.</p>
+
+  <div class="grid-2 ai" style="max-width:900px;align-items:start;gap:16px">
+    <div>
+      <h3 style="margin-top:0">Step 1 — System packages</h3>
+      <div class="code-block">
+        <div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="cc(this)">Copy</button></div>
+        <pre>sudo apt update && sudo apt upgrade -y
+sudo apt install -y python3-picamera2 \
+  tesseract-ocr libcap-dev i2c-tools</pre>
+      </div>
+      <div class="code-block">
+        <div class="code-header"><span class="code-lang">bash — verify camera</span><button class="copy-btn" onclick="cc(this)">Copy</button></div>
+        <pre>libcamera-hello --list-cameras
+<span class="cm"># Expected: Available cameras → IMX708</span></pre>
+      </div>
+
+      <h3>Step 2 — Clone &amp; venv</h3>
+      <div class="code-block">
+        <div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="cc(this)">Copy</button></div>
+        <pre>git clone https://github.com/&lt;your-username&gt;/AeroClean.git
+cd AeroClean
+python -m venv aeroclean_env
+source aeroclean_env/bin/activate
+pip install -r requirements.txt</pre>
+      </div>
+      <div class="callout warn">
+        <span class="icon">⚠️</span>
+        <div>Reactivate with <code>source aeroclean_env/bin/activate</code> in every new terminal. All test scripts and mission runs must run inside the venv.</div>
+      </div>
+
+      <h3>Step 3 — Disable serial login shell</h3>
+      <p style="font-size:13px;color:#475569">Do this before enabling UART0. The Pi OS attaches a getty console to UART0 by default — it will fight with ArduPilot over the wire.</p>
+      <div class="code-block">
+        <div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="cc(this)">Copy</button></div>
+        <pre><span class="cm"># Remove console=serial0,115200 from this file:</span>
+sudo nano /boot/firmware/cmdline.txt
+
+sudo systemctl disable serial-getty@ttyAMA0.service
+sudo systemctl stop serial-getty@ttyAMA0.service
+sudo reboot</pre>
+      </div>
+    </div>
+
+    <div>
+      <h3 style="margin-top:0">Step 4 — Enable interfaces in config.txt</h3>
+      <div class="tab-bar">
+        <button class="tab-btn active" onclick="switchTab(this,'sa')">Sensor A (I2C)</button>
+        <button class="tab-btn" onclick="switchTab(this,'sb')">Sensor B (UART)</button>
+      </div>
+      <div id="sa" class="tab-panel active" style="margin-top:10px">
+        <div class="code-block">
+          <div class="code-header"><span class="code-lang">/boot/firmware/config.txt</span><button class="copy-btn" onclick="cc(this)">Copy</button></div>
+          <pre>enable_uart=1         <span class="cm"># UART0 — ArduPilot FC</span>
+dtparam=i2c_arm=on    <span class="cm"># I2C — VL53L3CX</span>
+dtoverlay=uart3       <span class="cm"># UART3 — MTF-02P</span></pre>
+        </div>
+        <p style="font-size:12.5px;color:#475569">After reboot verify: <code>sudo i2cdetect -y 1</code> → expect <code>0x29</code></p>
+      </div>
+      <div id="sb" class="tab-panel" style="margin-top:10px">
+        <div class="code-block">
+          <div class="code-header"><span class="code-lang">/boot/firmware/config.txt</span><button class="copy-btn" onclick="cc(this)">Copy</button></div>
+          <pre>enable_uart=1         <span class="cm"># UART0 — ArduPilot FC</span>
+dtoverlay=uart3       <span class="cm"># UART3 — MTF-02P</span>
+dtoverlay=uart4       <span class="cm"># UART4 — TF sensor</span></pre>
+        </div>
+        <p style="font-size:12.5px;color:#475569">Use any free overlay UART (uart1–uart5). Always verify pins with <code>pinctrl -p</code> after reboot.</p>
+      </div>
+
+      <h3 style="margin-top:14px">Step 5 — Dialout group</h3>
+      <div class="code-block">
+        <div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="cc(this)">Copy</button></div>
+        <pre>sudo usermod -aG dialout $USER
+<span class="cm"># Log out and back in, then verify:</span>
+groups   <span class="cm"># expected output includes: dialout</span></pre>
+      </div>
+
+      <h3>Step 6 — Find device paths, update config.json</h3>
+      <div class="code-block">
+        <div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="cc(this)">Copy</button></div>
+        <pre>ls -l /dev/ttyAMA*
+<span class="cm"># Cross-reference with: pinctrl -p</span></pre>
+      </div>
+      <div class="code-block">
+        <div class="code-header"><span class="code-lang">config.json</span><button class="copy-btn" onclick="cc(this)">Copy</button></div>
+        <pre>"mavlink_uart": "/dev/ttyAMAx",
+"sensor_uart":  "/dev/ttyAMAy"</pre>
+      </div>
+
+      <div class="callout tip">
+        <span class="icon">💡</span>
+        <div><code>pinctrl -p</code> shows live GPIO state. Pins will change from <code>no … = none</code> to an alternate function like <code>TXD0</code> or <code>SDA1</code> after enabling interfaces.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Screen 3: Checklist ────────────────────────────────────────── -->
+<div class="screen" data-screen="3">
+  <h1 class="ai">Pre-flight <span class="accent">Checklist</span></h1>
+  <p class="ai" style="margin-bottom:14px">Click each item to mark it complete. Run hardware tests before any mission attempt.</p>
+
+  <div class="grid-2 ai" style="max-width:900px;align-items:start;gap:16px">
+    <div>
+      <h3 style="margin-top:0">Software</h3>
+      <div id="chk-list">
+        <div class="cl-item" onclick="toggleChk(this)"><div class="cl-box">✓</div><span>System packages installed: <code>python3-picamera2 tesseract-ocr libcap-dev i2c-tools</code></span></div>
+        <div class="cl-item" onclick="toggleChk(this)"><div class="cl-box">✓</div><span>Virtual environment created and active (<code>source aeroclean_env/bin/activate</code>)</span></div>
+        <div class="cl-item" onclick="toggleChk(this)"><div class="cl-box">✓</div><span>Python packages installed inside venv: <code>pip install -r requirements.txt</code></span></div>
+        <div class="cl-item" onclick="toggleChk(this)"><div class="cl-box">✓</div><span>Serial login shell disabled — <code>console=serial0,115200</code> removed from <code>cmdline.txt</code> and getty service stopped</span></div>
+        <div class="cl-item" onclick="toggleChk(this)"><div class="cl-box">✓</div><span><code>enable_uart=1</code> and <code>dtoverlay=uartX</code> in <code>/boot/firmware/config.txt</code></span></div>
+        <div class="cl-item" onclick="toggleChk(this)"><div class="cl-box">✓</div><span><code>dtparam=i2c_arm=on</code> in <code>config.txt</code> <strong>(sensor A only)</strong></span></div>
+        <div class="cl-item" onclick="toggleChk(this)"><div class="cl-box">✓</div><span>User in <code>dialout</code> group</span></div>
+        <div class="cl-item" onclick="toggleChk(this)"><div class="cl-box">✓</div><span>YOLO weights trained and placed in <code>weights/best_ncnn_model/</code></span></div>
+      </div>
+
+      <h3>config.json — null values to set</h3>
+      <div class="code-block">
+        <div class="code-header"><span class="code-lang">json</span><button class="copy-btn" onclick="cc(this)">Copy</button></div>
+        <pre>"mission": {
+  "mavlink_uart": "/dev/ttyAMAx",
+  "sensor_uart":  "/dev/ttyAMAy",
+  "pump_gpio_pin": &lt;BCM pin&gt;
+},
+"range_sensor": { "type": "a" },
+"wiper": { "wiper_gpio_pin": &lt;BCM pin&gt; }</pre>
+      </div>
+    </div>
+
+    <div>
+      <h3 style="margin-top:0">Hardware component tests</h3>
+      <p style="font-size:13px;color:#475569">Run each test in order. Do not attempt a mission until all pass.</p>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <div class="card" style="padding:11px 14px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px"><strong style="font-size:13px">Step 1 — Camera</strong><span class="badge bp">Run first</span></div>
+          <div class="code-block" style="margin:0"><div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="cc(this)">Copy</button></div><pre>python camera_test.py</pre></div>
+          <div style="font-size:12px;color:#64748b;margin-top:5px">Expected: live window, <code>[CAM TEST] 1920x1080  28.3 FPS</code></div>
+        </div>
+        <div class="card" style="padding:11px 14px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px"><strong style="font-size:13px">Step 2 — Vision models</strong></div>
+          <div class="code-block" style="margin:0"><div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="cc(this)">Copy</button></div><pre>python main.py --model ocr
+python main.py --model yolo</pre></div>
+        </div>
+        <div class="card" style="padding:11px 14px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px"><strong style="font-size:13px">Step 3 — Range sensor</strong></div>
+          <div class="code-block" style="margin:0"><div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="cc(this)">Copy</button></div><pre><span class="cm"># Sensor A:</span>  python sensor_range_test.py
+<span class="cm"># Sensor B:</span>  python sensor_tf_test.py</pre></div>
+          <div style="font-size:12px;color:#64748b;margin-top:5px">Expected: <code>0.452 m  (45.2 cm)</code></div>
+        </div>
+        <div class="card" style="padding:11px 14px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px"><strong style="font-size:13px">Step 4 — Optical flow</strong></div>
+          <div class="code-block" style="margin:0"><div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="cc(this)">Copy</button></div><pre>python sensor_flow_test.py</pre></div>
+          <div style="font-size:12px;color:#64748b;margin-top:5px">Expected: <code>flow_x=0.012  flow_y=-0.003  quality=210</code></div>
+        </div>
+        <div class="card" style="padding:11px 14px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px"><strong style="font-size:13px">Step 5 — Range + OCR together</strong></div>
+          <div class="code-block" style="margin:0"><div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="cc(this)">Copy</button></div><pre><span class="cm"># Sensor A:</span>  python sensor_ocr_test.py
+<span class="cm"># Sensor B:</span>  python sensor_ocr_test.py --sensor b --uart /dev/ttyAMAx</pre></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Screen 4: OCR Pipeline ─────────────────────────────────────── -->
+<div class="screen" data-screen="4">
+  <h1 class="ai">Model 1 — <span class="accent">OCR Pipeline</span></h1>
+  <p class="ai">Finds the word <strong>"dirty"</strong> written in marker on the board surface using Tesseract OCR with a preprocessing chain.</p>
+
+  <div class="grid-2 ai" style="max-width:840px;align-items:start;gap:18px">
+    <div>
+      <h3 style="margin-top:0">Preprocessing stages</h3>
+      <div style="display:flex;flex-direction:column;gap:0">
+        <div style="display:flex;gap:0;align-items:stretch">
+          <div style="display:flex;flex-direction:column;align-items:center;margin-right:12px">
+            <div style="width:26px;height:26px;border-radius:50%;background:linear-gradient(135deg,#3b82f6,#2563eb);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;flex-shrink:0">1</div>
+            <div style="width:2px;flex:1;background:#e2e8f0;margin:3px 0"></div>
+          </div>
+          <div style="padding-bottom:14px"><div style="font-weight:700;color:#0f172a;font-size:13px">Greyscale</div><div style="color:#64748b;font-size:12.5px">Strips colour — OCR only needs luminance</div></div>
+        </div>
+        <div style="display:flex;gap:0;align-items:stretch">
+          <div style="display:flex;flex-direction:column;align-items:center;margin-right:12px">
+            <div style="width:26px;height:26px;border-radius:50%;background:linear-gradient(135deg,#3b82f6,#2563eb);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;flex-shrink:0">2</div>
+            <div style="width:2px;flex:1;background:#e2e8f0;margin:3px 0"></div>
+          </div>
+          <div style="padding-bottom:14px"><div style="font-weight:700;color:#0f172a;font-size:13px">CLAHE</div><div style="color:#64748b;font-size:12.5px">Contrast Limited Adaptive Histogram Equalisation — lifts faint marker strokes that the board's reflective surface washes out</div></div>
+        </div>
+        <div style="display:flex;gap:0;align-items:stretch">
+          <div style="display:flex;flex-direction:column;align-items:center;margin-right:12px">
+            <div style="width:26px;height:26px;border-radius:50%;background:linear-gradient(135deg,#3b82f6,#2563eb);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;flex-shrink:0">3</div>
+            <div style="width:2px;flex:1;background:#e2e8f0;margin:3px 0"></div>
+          </div>
+          <div style="padding-bottom:14px"><div style="font-weight:700;color:#0f172a;font-size:13px">Adaptive threshold</div><div style="color:#64748b;font-size:12.5px">Converts to black-and-white using local pixel neighbourhoods — handles shadows and hotspots a global threshold misses</div></div>
+        </div>
+        <div style="display:flex;gap:0;align-items:stretch">
+          <div style="display:flex;flex-direction:column;align-items:center;margin-right:12px">
+            <div style="width:26px;height:26px;border-radius:50%;background:linear-gradient(135deg,#3b82f6,#2563eb);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;flex-shrink:0">4</div>
+          </div>
+          <div><div style="font-weight:700;color:#0f172a;font-size:13px">Morphological close</div><div style="color:#64748b;font-size:12.5px">Joins broken letter strokes so Tesseract sees whole characters instead of fragments</div></div>
+        </div>
+      </div>
+
+      <h3>Tesseract config</h3>
+      <div class="code-block">
+        <div class="code-header"><span class="code-lang">python</span><button class="copy-btn" onclick="cc(this)">Copy</button></div>
+        <pre><span class="cm"># Neural-network engine, uniform text block</span>
+config = <span class="str">'--oem 3 --psm 6'</span>
+data = pytesseract.image_to_data(frame, config=config)</pre>
+      </div>
+      <p style="font-size:12.5px;color:#475569">Result is searched for <code>dirty</code> (case-insensitive regex). Matches get red bounding boxes; clean frames show a green <code>CLEAN</code> banner.</p>
+    </div>
+
+    <div>
+      <h3 style="margin-top:0">Performance settings</h3>
+      <div class="card" style="margin-bottom:10px">
+        <div style="display:flex;flex-direction:column;gap:12px;font-size:13px">
+          <div>
+            <div style="font-weight:700;color:#0f172a;margin-bottom:2px">Throttle interval</div>
+            <div style="color:#475569;font-size:12.5px"><code>ocr_interval_s: 2.5</code> — Tesseract runs at most every 2.5 s. Last result redrawn between runs. Significantly reduces CPU load.</div>
+          </div>
+          <div class="div" style="margin:0"></div>
+          <div>
+            <div style="font-weight:700;color:#0f172a;margin-bottom:2px">Downscale before OCR</div>
+            <div style="color:#475569;font-size:12.5px"><code>ocr_scale: 0.5</code> — frame resized to 960×540 before preprocessing. Tesseract reads reliably at half resolution with ~4× less pixel data.</div>
+          </div>
+          <div class="div" style="margin:0"></div>
+          <div>
+            <div style="font-weight:700;color:#0f172a;margin-bottom:2px">Board ROI crop</div>
+            <div style="color:#475569;font-size:12.5px"><code>board_roi: [x, y, w, h]</code> — optional crop to board area only. Limits Tesseract to the region of interest, cutting processing time further.</div>
+          </div>
+        </div>
+      </div>
+      <div class="callout tip">
+        <span class="icon">💡</span>
+        <div>Both throttle and downscale are active by default. Adjust in <code>config.json</code> if detection is too slow or misses text.</div>
+      </div>
+      <h3>Run OCR mode</h3>
+      <div class="code-block">
+        <div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="cc(this)">Copy</button></div>
+        <pre>python main.py --model ocr
+<span class="cm"># Test on a saved image (no Pi camera needed)</span>
+python main.py --model ocr --source board.jpg --once</pre>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Screen 5: YOLO Model ───────────────────────────────────────── -->
+<div class="screen" data-screen="5">
+  <h1 class="ai">Model 2 — <span class="accent">YOLO11n</span></h1>
+  <p class="ai">Custom-trained detection model exported to NCNN. Classifies the board as <code>clean_board</code> or <code>dirty_board</code> with a bounding box and confidence score.</p>
+
+  <div class="grid-2 ai" style="max-width:840px;align-items:start;gap:18px">
+    <div>
+      <h3 style="margin-top:0">Why YOLO11n?</h3>
+      <table class="dep-table">
+        <thead><tr><th>Model</th><th>Params</th><th>mAP50</th><th>Pi 5 latency</th></tr></thead>
+        <tbody>
+          <tr><td>YOLOv8n</td><td>3.2M</td><td>37.3%</td><td>~120 ms</td></tr>
+          <tr><td><strong>YOLO11n</strong></td><td><strong>2.6M</strong></td><td><strong>39.5%</strong></td><td><strong>~80 ms</strong> <span class="badge bp">This project</span></td></tr>
+        </tbody>
+      </table>
+      <p style="font-size:12.5px;color:#475569;margin-top:6px">YOLO11n is both smaller and more accurate than YOLOv8n — the right choice for a resource-constrained device.</p>
+
+      <h3>Model family sizes</h3>
+      <table class="dep-table">
+        <thead><tr><th>Variant</th><th>Params</th><th>mAP50</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td><strong>11n</strong></td><td>2.6M</td><td>39.5%</td><td><span class="badge bp">Used here</span></td></tr>
+          <tr><td>11s</td><td>9.4M</td><td>47.0%</td><td>~3× more compute</td></tr>
+          <tr><td>11m</td><td>20.1M</td><td>51.5%</td><td>Desktop only</td></tr>
+          <tr><td>11l / 11x</td><td>25–57M</td><td>53–55%</td><td>Requires GPU</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Run YOLO mode</h3>
+      <div class="code-block">
+        <div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="cc(this)">Copy</button></div>
+        <pre>python main.py --model yolo
+python main.py --model yolo --conf 0.5
+python main.py --model yolo --save
+python main.py --model yolo --source clip.mp4</pre>
+      </div>
+    </div>
+
+    <div>
+      <h3 style="margin-top:0">Export format: NCNN</h3>
+      <div class="callout info">
+        <span class="icon">⚡</span>
+        <div>NCNN is a neural network inference framework optimised for ARM CPUs. Exporting to NCNN gives approximately <strong>2× faster inference</strong> on Pi 5 with no GPU required.</div>
+      </div>
+
+      <h3>Classes</h3>
+      <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px">
+        <div class="card card-h" style="display:flex;align-items:center;gap:12px;padding:12px 16px">
+          <div style="position:relative"><span class="pdot g"></span></div>
+          <div><div style="font-weight:700;color:#0f172a;font-size:13px">clean_board — ID 0</div><div style="color:#475569;font-size:12.5px">Erased, usable board surface</div></div>
+        </div>
+        <div class="card card-h" style="display:flex;align-items:center;gap:12px;padding:12px 16px">
+          <div style="position:relative"><span class="pdot r"></span></div>
+          <div><div style="font-weight:700;color:#0f172a;font-size:13px">dirty_board — ID 1</div><div style="color:#475569;font-size:12.5px">Marker residue, ghost marks, or heavy smudging</div></div>
+        </div>
+      </div>
+
+      <h3>Weights path in config.json</h3>
+      <div class="code-block">
+        <div class="code-header"><span class="code-lang">json</span><button class="copy-btn" onclick="cc(this)">Copy</button></div>
+        <pre>"yolo_weights": "weights/best_ncnn_model"</pre>
+      </div>
+      <p style="font-size:12.5px;color:#475569">Points to the directory containing <code>*.param</code> and <code>*.bin</code>.</p>
+
+      <h3>Task variants (reference)</h3>
+      <table class="dep-table">
+        <thead><tr><th>Variant</th><th>Weights</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Detection</strong></td><td><code>yolo11n.pt</code> <span class="badge bp">Used here</span></td></tr>
+          <tr><td>OBB / Segmentation / Pose / Classification</td><td><code>yolo11n-{obb,seg,pose,cls}.pt</code></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ── Screen 6: Collect Data ─────────────────────────────────────── -->
+<div class="screen" data-screen="6">
+  <h1 class="ai">Collect <span class="accent">Training Data</span></h1>
+  <p class="ai">Run <code>collect_data.py</code> on the Pi to capture images directly from the IMX708 camera.</p>
+
+  <div class="grid-2 ai" style="max-width:840px;align-items:start;gap:18px">
+    <div>
+      <h3 style="margin-top:0">Command builder</h3>
+      <div class="cmd-builder">
+        <div class="cmd-row">
+          <div><div class="cmd-label">Class</div><select id="cmd-class" onchange="buildCmd()"><option value="clean_board">clean_board</option><option value="dirty_board">dirty_board</option></select></div>
+          <div><div class="cmd-label">Count</div><input type="number" id="cmd-count" value="150" min="10" max="500" onchange="buildCmd()" style="width:80px"/></div>
+          <div><div class="cmd-label">Mode</div><select id="cmd-mode" onchange="buildCmd()"><option value="manual">Manual (SPACE)</option><option value="auto">Burst (auto)</option></select></div>
+          <div id="interval-wrap" style="display:none"><div class="cmd-label">Interval (s)</div><input type="number" id="cmd-interval" value="2" min="1" max="30" onchange="buildCmd()" style="width:70px"/></div>
+        </div>
+        <div class="cmd-out">
+          <code id="cmd-preview" style="background:transparent;border:none;padding:0;color:#60a5fa;font-size:13px"></code>
+          <button class="copy-btn" onclick="copyCmd(this)">Copy</button>
+        </div>
+      </div>
+      <div class="callout warn" style="margin-top:10px">
+        <span class="icon">⚠️</span>
+        <div>Run once for each class. Aim for <strong>100–200 images per class</strong> minimum. Images save to <code>images/raw/&lt;class_name&gt;/</code></div>
+      </div>
+    </div>
+
+    <div>
+      <h3 style="margin-top:0">Tips for a good dataset</h3>
+      <div style="display:flex;flex-direction:column;gap:7px">
+        <div class="tc"><div class="ti">💡</div><h4>Vary lighting</h4><p>Overhead fluorescent, natural window light, lamp at an angle — the Pi will encounter all of these.</p></div>
+        <div class="tc"><div class="ti">🖊️</div><h4>Vary board coverage</h4><p>Lightly smudged, heavily marked, ghost marks, partially erased — capture the full spectrum.</p></div>
+        <div class="tc"><div class="ti">📐</div><h4>Vary angle slightly</h4><p>Straight-on plus small tilts (±15°). Match the mounting height you'll use in production.</p></div>
+        <div class="tc"><div class="ti">📏</div><h4>Match production distance</h4><p>Capture from the same distance the drone will be during SCAN so the model learns the right scale.</p></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Screen 7: Label & Train ────────────────────────────────────── -->
+<div class="screen" data-screen="7">
+  <h1 class="ai">Label &amp; <span class="accent">Train</span></h1>
+
+  <div class="grid-2 ai" style="max-width:840px;align-items:start;gap:18px">
+    <div>
+      <h3 style="margin-top:0">Step 1 — Label in Label Studio</h3>
+      <div class="si"><span class="sn">1.</span><span>Install and launch: <code>pip install label-studio &amp;&amp; label-studio start</code></span></div>
+      <div class="si"><span class="sn">2.</span><span>Create project → <strong>Object Detection with Bounding Boxes</strong></span></div>
+      <div class="si"><span class="sn">3.</span><span>Add labels <code>clean_board</code> then <code>dirty_board</code> — order matters (IDs 0, 1)</span></div>
+      <div class="si"><span class="sn">4.</span><span>Import <code>images/raw/</code> — draw one tight bounding box per image</span></div>
+      <div class="si"><span class="sn">5.</span><span>Export → <strong>YOLO format</strong> → extract to <code>images/</code> and <code>labels/</code></span></div>
+      <div class="callout tip" style="margin-top:10px">
+        <span class="icon">🎯</span>
+        <div>One box per image. Tight around the board surface. Pick a rule for ambiguous boards (e.g. "any residue = dirty") and apply it <em>consistently</em>.</div>
+      </div>
+
+      <h3>Labeling rules</h3>
+      <div class="grid-2" style="gap:10px;margin-bottom:10px">
+        <div class="rule-card rule-do">
+          <strong>✓ Do</strong>
+          <ul>
+            <li>One bounding box per image — tightly around the entire board surface</li>
+            <li>Draw to board edges, not around individual marks</li>
+            <li>Decide a rule for ambiguous boards and apply it <em>every time</em></li>
+            <li>100–200 images minimum per class</li>
+          </ul>
+        </div>
+        <div class="rule-card rule-dont">
+          <strong>✗ Don't</strong>
+          <ul>
+            <li>Draw multiple boxes per image</li>
+            <li>Draw a box around individual marks on the board</li>
+            <li>Leave board edges cut off outside the box</li>
+            <li>Mix labeling rules mid-dataset</li>
+          </ul>
+        </div>
+      </div>
+
+      <h3>Class decision guide</h3>
+      <table class="dep-table" style="margin-bottom:10px">
+        <thead><tr><th>Board condition</th><th>Label as</th></tr></thead>
+        <tbody>
+          <tr><td>Fully erased, no visible residue</td><td><span class="cls-clean"><span class="pdot g"></span>clean_board</span></td></tr>
+          <tr><td>Ghost marks (faded but visible)</td><td><span class="cls-dirty"><span class="pdot r"></span>dirty_board</span></td></tr>
+          <tr><td>Partial erasure — some marks remain</td><td><span class="cls-dirty"><span class="pdot r"></span>dirty_board</span></td></tr>
+          <tr><td>Heavy writing / smudging</td><td><span class="cls-dirty"><span class="pdot r"></span>dirty_board</span></td></tr>
+          <tr><td>Smudge from eraser only — no ink</td><td><span class="cls-clean"><span class="pdot g"></span>clean_board</span></td></tr>
+        </tbody>
+      </table>
+      <div class="callout info" style="margin-bottom:10px">
+        <span class="icon">ℹ️</span>
+        <div>Class order matters — add <strong>clean_board first (ID 0)</strong>, then dirty_board (ID 1). Swapping them changes class IDs in every label file and breaks training.</div>
+      </div>
+
+      <h3>Required split</h3>
+      <div class="code-block">
+        <div class="code-header"><span class="code-lang">tree</span></div>
+        <pre>AeroClean/
+  images/train/   images/val/   images/test/
+  labels/train/   labels/val/   labels/test/</pre>
+      </div>
+      <p style="font-size:12.5px;color:#475569">80% train / 10% val / 10% test recommended.</p>
+    </div>
+
+    <div>
+      <h3 style="margin-top:0">Step 2 — Train on Google Colab</h3>
+      <p style="font-size:13.5px">Open <code>train/train_colab.ipynb</code> in Colab. Set runtime to <strong>GPU → T4</strong>.</p>
+      <div class="code-block">
+        <div class="code-header"><span class="code-lang">python</span><button class="copy-btn" onclick="cc(this)">Copy</button></div>
+        <pre><span class="kw">from</span> ultralytics <span class="kw">import</span> <span class="fn">YOLO</span>
+model = <span class="fn">YOLO</span>(<span class="str">'yolo11n.pt'</span>)
+model.<span class="fn">train</span>(
+    data=<span class="str">'dataset.yaml'</span>,
+    epochs=<span class="nu">100</span>,
+    imgsz=<span class="nu">640</span>,
+    batch=<span class="nu">16</span>,
+    device=<span class="nu">0</span>
+)</pre>
+      </div>
+      <div class="callout info">
+        <span class="icon">⏱️</span>
+        <div>~10–20 min on a T4 GPU for 100 epochs with ~300 images. Free Colab tier is sufficient.</div>
+      </div>
+
+      <h3>Step 3 — Export to NCNN &amp; copy to Pi</h3>
+      <div class="code-block">
+        <div class="code-header"><span class="code-lang">python — runs in notebook</span><button class="copy-btn" onclick="cc(this)">Copy</button></div>
+        <pre>export_model = <span class="fn">YOLO</span>(<span class="str">'runs/.../best.pt'</span>)
+export_model.<span class="fn">export</span>(format=<span class="str">'ncnn'</span>)
+<span class="cm"># Produces: best_ncnn_model/  (*.param + *.bin)</span></pre>
+      </div>
+      <div class="code-block">
+        <div class="code-header"><span class="code-lang">bash — laptop → Pi</span><button class="copy-btn" onclick="cc(this)">Copy</button></div>
+        <pre>scp best_ncnn_model.zip pi@&lt;PI_IP&gt;:~/AeroClean/weights/
+<span class="cm"># On Pi:</span>
+cd ~/AeroClean/weights
+unzip best_ncnn_model.zip -d best_ncnn_model</pre>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Screen 8: Practice Labeling ──────────────────────────────── -->
+<div class="screen" data-screen="8">
+  <h1 class="ai">Practice <span class="accent">Drawing Boxes</span></h1>
+  <p class="ai" style="margin-bottom:12px">Select a class, then click and drag on the board to draw a bounding box. Try all four board examples before labeling your real dataset.</p>
+
+  <div class="ai" style="display:flex;gap:20px;align-items:flex-start;max-width:960px">
+    <!-- Left: canvas + controls -->
+    <div style="flex:1;min-width:0">
+      <div class="class-toggle">
+        <button class="cls-btn active-clean" id="btn-clean" onclick="setClass('clean')">
+          <span class="pdot g"></span> clean_board <span style="opacity:.55;font-size:11px;margin-left:2px">ID 0</span>
+        </button>
+        <button class="cls-btn" id="btn-dirty" onclick="setClass('dirty')">
+          <span class="pdot r"></span> dirty_board <span style="opacity:.55;font-size:11px;margin-left:2px">ID 1</span>
+        </button>
+      </div>
+
+      <div style="margin-bottom:10px">
+        <div style="font-size:10.5px;color:#64748b;font-weight:700;text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px">Choose a board to label</div>
+        <div class="board-thumbs" id="thumb-row"></div>
+      </div>
+
+      <div id="canvas-wrap" class="mode-clean">
+        <canvas id="board-canvas" width="560" height="340"></canvas>
+      </div>
+
+      <div style="display:flex;align-items:center;gap:10px;margin-top:10px">
+        <button class="btn btn-ghost" onclick="undoLast()" style="font-size:13px;padding:8px 16px">↩ Undo</button>
+        <button class="btn btn-ghost" onclick="clearAll()" style="font-size:13px;padding:8px 16px">✕ Clear</button>
+        <div style="flex:1">
+          <div style="font-size:11px;color:#94a3b8;margin-bottom:3px">Practice progress</div>
+          <div class="progress-bar-wrap"><div class="progress-bar-fill" id="prog-bar" style="width:0%"></div></div>
+        </div>
+        <div id="prog-label" style="font-size:12px;font-weight:700;color:#64748b;white-space:nowrap">0 / 4 boards</div>
+      </div>
+
+      <div class="callout tip" style="margin-top:10px">
+        <span class="icon">💡</span>
+        <div>Draw the box tightly around the <strong>entire board surface</strong> — not just the dirty area. The model needs to see where the board is, then decide if it's clean or dirty.</div>
+      </div>
+    </div>
+
+    <!-- Right: labels + feedback -->
+    <div style="width:220px;flex-shrink:0">
+      <div style="font-size:10.5px;color:#64748b;font-weight:700;text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px">Annotations</div>
+      <div id="label-sidebar">
+        <div style="color:#94a3b8;font-size:13px;text-align:center;padding:20px 0;border:1.5px dashed #e2e8f0;border-radius:10px">No boxes yet.<br/>Draw one to start.</div>
+      </div>
+      <div class="div" style="margin:14px 0"></div>
+      <div style="font-size:10.5px;color:#64748b;font-weight:700;text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px">Board info</div>
+      <div id="board-info" class="card" style="padding:12px 14px;font-size:12.5px;color:#475569;line-height:1.6"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Screen 9: Configuration ────────────────────────────────────── -->
+<div class="screen" data-screen="9">
+  <h1 class="ai"><span class="accent">Configuration</span> Reference</h1>
+  <p class="ai">All parameters live in <code>config.json</code>. Hardware-dependent values are <code>null</code> by default — the mission errors clearly until they are set.</p>
+
+  <div class="ai" style="max-width:940px">
+    <div class="tab-bar">
+      <button class="tab-btn active" onclick="switchTab(this,'cam')">Camera / Inference</button>
+      <button class="tab-btn" onclick="switchTab(this,'mission')">Mission</button>
+      <button class="tab-btn" onclick="switchTab(this,'sensors')">Sensors</button>
+      <button class="tab-btn" onclick="switchTab(this,'wiper')">Wiper</button>
+    </div>
+
+    <div id="cam" class="tab-panel active" style="margin-top:12px;overflow-x:auto">
+      <table class="dep-table">
+        <thead><tr><th>Key</th><th>Default</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td><code>resolution</code></td><td><code>[1920, 1080]</code></td><td>Camera capture resolution [width, height]</td></tr>
+          <tr><td><code>framerate</code></td><td><code>30</code></td><td>Camera FPS — 30 is the IMX708 default</td></tr>
+          <tr><td><code>board_roi</code></td><td><code>null</code></td><td>[x, y, w, h] crop for OCR. null = full frame</td></tr>
+          <tr><td><code>ocr_interval_s</code></td><td><code>2.5</code></td><td>Min seconds between Tesseract runs</td></tr>
+          <tr><td><code>ocr_scale</code></td><td><code>0.5</code></td><td>Downscale before OCR. 0.5 = 960×540 from 1920×1080</td></tr>
+          <tr><td><code>yolo_weights</code></td><td><code>"weights/best_ncnn_model"</code></td><td>Path to NCNN model directory (*.param + *.bin)</td></tr>
+          <tr><td><code>yolo_conf</code></td><td><code>0.45</code></td><td>YOLO confidence threshold. Override at runtime with <code>--conf</code></td></tr>
+          <tr><td><code>display</code></td><td><code>true</code></td><td>Show live OpenCV window. Set <code>false</code> on headless Pi</td></tr>
+          <tr><td><code>save_output</code></td><td><code>false</code></td><td>Auto-save annotated frames. Enable per-run with <code>--save</code></td></tr>
+          <tr><td><code>output_dir</code></td><td><code>"output"</code></td><td>Directory for saved frames (created automatically)</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div id="mission" class="tab-panel" style="margin-top:12px;overflow-x:auto">
+      <table class="dep-table">
+        <thead><tr><th>Key</th><th>Default</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td><code>mavlink_uart</code></td><td><span class="badge bw">null ⚠</span></td><td>UART to ArduPilot FC — confirm with <code>ls -l /dev/ttyAMA*</code></td></tr>
+          <tr><td><code>mavlink_baud</code></td><td><code>57600</code></td><td>Must match ArduPilot SERIALx_BAUD</td></tr>
+          <tr><td><code>sensor_uart</code></td><td><span class="badge bw">null ⚠</span></td><td>UART to MTF-02P — confirm with <code>ls -l /dev/ttyAMA*</code></td></tr>
+          <tr><td><code>sensor_baud</code></td><td><code>115200</code></td><td>MTF-02P baud rate — fixed by hardware, do not change</td></tr>
+          <tr><td><code>takeoff_altitude_m</code></td><td><code>1.5</code></td><td>Hover altitude in metres after arming</td></tr>
+          <tr><td><code>scan_yaw_rate_dps</code></td><td><code>20.0</code></td><td>Yaw spin speed during scan (deg/s). 20 = one rotation in 18 s</td></tr>
+          <tr><td><code>scan_timeout_s</code></td><td><code>60.0</code></td><td>Abort scan and RTL if no board found within this time</td></tr>
+          <tr><td><code>approach_stop_dist_m</code></td><td><code>0.5</code></td><td>Stop when range sensor reads ≤ this. Match to wiper arm reach</td></tr>
+          <tr><td><code>approach_kp</code></td><td><code>0.4</code></td><td>P-gain for lateral/vertical centering</td></tr>
+          <tr><td><code>approach_kp_forward</code></td><td><code>0.5</code></td><td>Forward gain: <code>vx = kp_forward × (dist − stop_dist)</code></td></tr>
+          <tr><td><code>align_threshold_px</code></td><td><code>40</code></td><td>Phase 1 radius — won't move forward until board within this many px of centre</td></tr>
+          <tr><td><code>approach_max_speed_ms</code></td><td><code>0.3</code></td><td>Hard velocity cap on any axis (m/s)</td></tr>
+          <tr><td><code>approach_cautious_speed_ms</code></td><td><code>0.05</code></td><td>Forward creep when range sensor has no reading yet</td></tr>
+          <tr><td><code>pump_gpio_pin</code></td><td><span class="badge bw">null ⚠</span></td><td>BCM GPIO pin to pump relay IN</td></tr>
+          <tr><td><code>pump_duration_s</code></td><td><code>5.0</code></td><td>Seconds to run the pump before wiping</td></tr>
+          <tr><td><code>frame_width_px</code></td><td><code>1920</code></td><td>Must match <code>resolution[0]</code> — used by approach controller</td></tr>
+          <tr><td><code>frame_height_px</code></td><td><code>1080</code></td><td>Must match <code>resolution[1]</code> — used by approach controller</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div id="sensors" class="tab-panel" style="margin-top:12px;overflow-x:auto">
+      <table class="dep-table">
+        <thead><tr><th>Key</th><th>Default</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td><code>range_sensor.type</code></td><td><code>"a"</code></td><td><code>"a"</code> = VL53L3CX I2C (sensor A, default) · <code>"b"</code> = TF-Luna/TFMini UART (sensor B)</td></tr>
+          <tr><td><code>range_sensor.i2c_address</code></td><td><code>41</code></td><td>I2C address as decimal integer. 0x29 = 41. Change only if XSHUT remapped it</td></tr>
+          <tr><td><code>range_sensor.timing_budget_ms</code></td><td><code>50</code></td><td><strong>Sensor A only.</strong> VL53L4CD measurement interval (10–200 ms). Lower = faster but noisier</td></tr>
+          <tr><td><code>tf_sensor.uart</code></td><td><span class="badge bw">null</span></td><td><strong>Sensor B only.</strong> UART path for TF-Luna/TFMini (e.g. <code>/dev/ttyAMA4</code>)</td></tr>
+          <tr><td><code>tf_sensor.baud</code></td><td><code>115200</code></td><td><strong>Sensor B only.</strong> TF sensor baud rate — fixed by hardware</td></tr>
+        </tbody>
+      </table>
+      <div class="callout info" style="margin-top:12px;max-width:600px">
+        <span class="icon">ℹ️</span>
+        <div>Verify sensor A before running: <code>sudo i2cdetect -y 1</code> → expect <code>0x29</code> at address 41.</div>
+      </div>
+    </div>
+
+    <div id="wiper" class="tab-panel" style="margin-top:12px;overflow-x:auto">
+      <div class="callout warn" style="max-width:600px;margin-bottom:12px">
+        <span class="icon">🔧</span>
+        <div><strong>Wiper actuator is TBD.</strong> <code>wiper.py</code> is a skeleton — methods print "not yet implemented". Config keys are reserved for when the mechanism is confirmed.</div>
+      </div>
+      <table class="dep-table">
+        <thead><tr><th>Key</th><th>Default</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td><code>wiper_gpio_pin</code></td><td><span class="badge bw">null ⚠</span></td><td>BCM GPIO pin to wiper arm control wire</td></tr>
+          <tr><td><code>home_angle</code></td><td><code>90.0</code></td><td>Arm position when fully retracted (degrees)</td></tr>
+          <tr><td><code>press_angle</code></td><td><code>45.0</code></td><td>Arm position when pressed against board. Tune to arm geometry</td></tr>
+          <tr><td><code>sweep_left</code></td><td><code>30.0</code></td><td>Left limit of wipe sweep arc (degrees)</td></tr>
+          <tr><td><code>sweep_right</code></td><td><code>150.0</code></td><td>Right limit of wipe sweep arc (degrees)</td></tr>
+          <tr><td><code>sweep_passes</code></td><td><code>2</code></td><td>Number of left-right passes per clean cycle</td></tr>
+          <tr><td><code>sweep_speed</code></td><td><code>0.01</code></td><td>Seconds per degree step. Lower = faster sweep</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ── Screen 10: Architecture & Mission ─────────────────────────── -->
+<div class="screen" data-screen="10">
+  <h1 class="ai">Architecture &amp; <span class="accent">Mission</span></h1>
+
+  <div class="grid-2 ai" style="max-width:920px;align-items:start;gap:16px">
+    <div>
+      <h3 style="margin-top:0">Mission state machine</h3>
+      <div class="card" style="padding:14px 18px;margin-bottom:12px">
+        <div class="flow" style="margin:0 0 8px">
+          <div class="fn2 ye">IDLE</div><div class="fa">→</div>
+          <div class="fn2 hl">SCAN</div><div class="fa">→</div>
+          <div class="fn2 hl">APPROACH</div><div class="fa">→</div>
+          <div class="fn2 hl">CLEAN</div><div class="fa">→</div>
+          <div class="fn2">RETURN</div><div class="fa">→</div>
+          <div class="fn2 gr">DONE</div>
+        </div>
+        <div style="font-size:12px;color:#94a3b8;display:flex;gap:16px;flex-wrap:wrap">
+          <span>SCAN timeout → RETURN</span>
+          <span>Board lost in APPROACH → SCAN</span>
+          <span>Any exception → <span style="color:#ef4444">ABORTED</span></span>
+        </div>
+      </div>
+      <table class="dep-table" style="font-size:12.5px">
+        <thead><tr><th>State</th><th>What happens</th></tr></thead>
+        <tbody>
+          <tr><td><strong>IDLE</strong></td><td>Arms the FC and initiates takeoff to <code>takeoff_altitude_m</code></td></tr>
+          <tr><td><strong>SCAN</strong></td><td>Slow yaw spin at <code>scan_yaw_rate_dps</code>; YOLO runs every frame looking for <code>dirty_board</code></td></tr>
+          <tr><td><strong>APPROACH</strong></td><td><strong>Phase 1 — Align:</strong> holds position, corrects lateral/vertical until board is within <code>align_threshold_px</code> of frame centre. <strong>Phase 2 — Approach:</strong> drives forward at <code>vx = kp_forward × (dist − stop_dist)</code>; stops when range sensor reads ≤ <code>approach_stop_dist_m</code></td></tr>
+          <tr><td><strong>CLEAN</strong></td><td>Holds position; activates pump for <code>pump_duration_s</code> seconds, then actuates the wiper arm sweep</td></tr>
+          <tr><td><strong>RETURN</strong></td><td>Switches ArduPilot to RTL mode; waits for landing</td></tr>
+          <tr><td><strong>DONE / ABORTED</strong></td><td>Terminal states — all subsystems shut down cleanly</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Frame routing</h3>
+      <div class="arch-box" style="font-size:11.5px">
+Camera → BGR frame
+           │
+    ┌──────┴──────┐
+    ▼             ▼
+ <span class="pi">OCR model</span>    <span class="i2">YOLO model</span>
+  bool         dict | None
+    └──────┬──────┘
+           ▼
+     OpenCV window / output/</div>
+    </div>
+
+    <div>
+      <h3 style="margin-top:0">Hardware topology</h3>
+      <div class="arch-box">
+<span class="pi">┌─────────────────────────────────────────┐
+│           Raspberry Pi 5                │
+│                                         │
+│  IMX708 Camera     →  YOLO / OCR        │
+│  MTF-02P (UART)    →  optical flow      │
+│  VL53L3CX (I2C)    →  forward range (A) │
+│  TF-Luna  (UART)   →  forward range (B) │
+│  Mission state machine                  │
+│  GPIO pump pin     →  pump relay        │
+│  GPIO wiper pin    →  wiper arm         │
+│                                         │
+│  DroneKit (MAVLink over UART)           │
+└──────────────┬──────────────────────────┘</span>
+               │ <span class="ua">UART — MAVLink</span>
+<span class="fc">┌──────────────▼──────────────────────────┐
+│         ArduPilot FC                    │
+│  Attitude stabilisation (own IMU)       │
+│  Motor control                          │
+│  GUIDED mode — velocity targets         │
+└─────────────────────────────────────────┘</span></div>
+
+      <h3>UART interfaces</h3>
+      <div class="code-block">
+        <div class="code-header"><span class="code-lang">/boot/firmware/config.txt</span></div>
+        <pre><span class="cm"># UART0 — ArduPilot FC (always required)</span>
+enable_uart=1
+
+<span class="cm"># MTF-02P optical flow (always required)</span>
+dtoverlay=uart3
+
+<span class="cm"># Sensor A — VL53L3CX (I2C)</span>
+dtparam=i2c_arm=on
+
+<span class="cm"># Sensor B — TF-Luna/TFMini (UART, alt.)</span>
+dtoverlay=uart4   <span class="cm"># instead of i2c_arm=on</span></pre>
+      </div>
+
+      <h3>All CLI flags</h3>
+      <table class="dep-table" style="font-size:12.5px">
+        <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td><code>--mode</code></td><td><code>inference</code></td><td><code>inference</code> or <code>mission</code></td></tr>
+          <tr><td><code>--model</code></td><td>required</td><td><code>ocr</code> or <code>yolo</code> (inference only)</td></tr>
+          <tr><td><code>--config</code></td><td><code>config.json</code></td><td>Path to alternate config file</td></tr>
+          <tr><td><code>--source</code></td><td>Pi camera</td><td>Image or video for offline testing</td></tr>
+          <tr><td><code>--once</code></td><td>off</td><td>Process one frame then exit</td></tr>
+          <tr><td><code>--conf</code></td><td>from config</td><td>YOLO confidence threshold override</td></tr>
+          <tr><td><code>--save</code></td><td>off</td><td>Write annotated frames to <code>output/</code></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+</div><!-- /viewport -->
+
+<!-- ══ FOOTER ════════════════════════════════════════════════════════ -->
+<div id="footer">
+  <button class="btn btn-ghost" id="btn-back" onclick="navigate(-1)" disabled>← Back</button>
+  <span id="step-counter">1 of 11</span>
+  <button class="btn btn-primary" id="btn-next" onclick="navigate(1)">Next →</button>
+</div>
+
+<script>
+const STEPS = ['Welcome','Hardware','Setup','Checklist','OCR Pipeline','YOLO Model','Collect Data','Label & Train','Practice','Configuration','Architecture'];
+let cur = 0;
+
+/* ── Stepper ── */
+const stepper = document.getElementById('stepper');
+STEPS.forEach((label, i) => {
+  if (i > 0) {
+    const line = document.createElement('div');
+    line.className = 'step-line';
+    line.id = 'line-' + i;
+    stepper.appendChild(line);
+  }
+  const dot = document.createElement('div');
+  dot.className = 'step-dot' + (i === 0 ? ' active' : '');
+  dot.id = 'dot-' + i;
+  dot.onclick = () => goTo(i);
+  dot.innerHTML = `<div class="num"><span>${i + 1}</span><div class="step-label">${label}</div></div>`;
+  stepper.appendChild(dot);
+});
+
+/* ── Navigation ── */
+function navigate(dir) { goTo(cur + dir); }
+
+function goTo(target) {
+  if (target < 0 || target >= STEPS.length) return;
+  const screens = document.querySelectorAll('.screen');
+  screens[cur].classList.remove('active');
+  screens[cur].classList.add('exit-left');
+  setTimeout(() => screens[cur].classList.remove('exit-left'), 380);
+  cur = target;
+  screens[cur].classList.add('active');
+  if (cur === 8) { setTimeout(() => { drawBoard(curBoard); drawAnnotations(); }, 50); }
+  updateUI();
+}
+
+function updateUI() {
+  document.getElementById('btn-back').disabled = cur === 0;
+  document.getElementById('btn-next').disabled = cur === STEPS.length - 1;
+  document.getElementById('btn-next').textContent = cur === STEPS.length - 1 ? '✓ Done' : 'Next →';
+  document.getElementById('step-counter').textContent = `${cur + 1} of ${STEPS.length}`;
+  STEPS.forEach((_, i) => {
+    const dot = document.getElementById('dot-' + i);
+    dot.classList.remove('active', 'done');
+    if (i < cur) dot.classList.add('done');
+    else if (i === cur) dot.classList.add('active');
+    if (i > 0) document.getElementById('line-' + i).style.background = i <= cur ? '#10b981' : '#e2e8f0';
+  });
+  const pct = cur / (STEPS.length - 1);
+  document.getElementById('ring-fill').style.strokeDashoffset = 94.2 * (1 - pct);
+  document.getElementById('ring-text').textContent = Math.round(pct * 100) + '%';
+}
+
+/* ── Copy code blocks ── */
+function cc(btn) {
+  const pre = btn.closest('.code-block').querySelector('pre');
+  if (!pre) return;
+  navigator.clipboard.writeText(pre.innerText).then(() => {
+    btn.textContent = 'Copied!'; btn.classList.add('ok');
+    setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('ok'); }, 1800);
+  });
+}
+
+/* ── Tab switcher (shared) ── */
+function switchTab(btn, id) {
+  const bar = btn.closest('.tab-bar');
+  const screen = btn.closest('.screen');
+  bar.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  screen.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  btn.classList.add('active');
+  const panel = screen.querySelector('#' + id) || document.getElementById(id);
+  if (panel) panel.classList.add('active');
+}
+
+/* ── Command builder ── */
+function buildCmd() {
+  const cls = document.getElementById('cmd-class').value;
+  const cnt = document.getElementById('cmd-count').value;
+  const mode = document.getElementById('cmd-mode').value;
+  const iw = document.getElementById('interval-wrap');
+  iw.style.display = mode === 'auto' ? '' : 'none';
+  let cmd = `python collect_data.py --class ${cls} --count ${cnt}`;
+  if (mode === 'auto') cmd += ` --interval ${document.getElementById('cmd-interval').value}`;
+  document.getElementById('cmd-preview').textContent = cmd;
+}
+
+function copyCmd(btn) {
+  const txt = document.getElementById('cmd-preview').textContent;
+  navigator.clipboard.writeText(txt).then(() => {
+    btn.textContent = 'Copied!'; btn.classList.add('ok');
+    setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('ok'); }, 1800);
+  });
+}
+
+/* ── Checklist ── */
+function toggleChk(el) {
+  el.classList.toggle('chk');
+}
+
+/* ── Init ── */
+buildCmd();
+updateUI();
+
+/* ══ CANVAS PRACTICE ══════════════════════════════════════════════ */
+const BOARDS = [
+  { id:0, name:'Clean board',   hint:'Fully erased — label as clean_board',  correct:'clean', draw: drawClean },
+  { id:1, name:'Heavy marker',  hint:'Clear writing visible — dirty_board',   correct:'dirty', draw: drawHeavy },
+  { id:2, name:'Ghost marks',   hint:'Faint residue remains — dirty_board',   correct:'dirty', draw: drawGhost },
+  { id:3, name:'Partial erase', hint:'Some marks remain — dirty_board',       correct:'dirty', draw: drawPartial },
+];
+let curBoard = 0, activeClass = 'clean', isDrawing = false;
+let startX = 0, startY = 0, tempBox = null;
+let annotations = {}, boardedBoards = new Set();
+BOARDS.forEach(b => { annotations[b.id] = []; });
+
+const canvas = document.getElementById('board-canvas');
+const ctx = canvas.getContext('2d');
+const W = canvas.width, H = canvas.height;
+
+function drawClean(ctx, W, H) {
+  ctx.fillStyle = '#f5f0e8'; ctx.fillRect(20,20,W-40,H-40);
+  ctx.strokeStyle = '#8b7355'; ctx.lineWidth = 8; ctx.strokeRect(20,20,W-40,H-40);
+  const g = ctx.createLinearGradient(20,20,W-20,H-20);
+  g.addColorStop(0,'rgba(255,255,255,.15)'); g.addColorStop(1,'rgba(0,0,0,.05)');
+  ctx.fillStyle = g; ctx.fillRect(20,20,W-40,H-40);
+  ctx.fillStyle = 'rgba(200,195,185,.3)';
+  ctx.beginPath(); ctx.ellipse(180,160,60,30,-0.3,0,Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(350,200,50,25,0.2,0,Math.PI*2); ctx.fill();
+}
+function drawHeavy(ctx, W, H) {
+  drawClean(ctx, W, H);
+  ctx.strokeStyle = '#1a1a2e'; ctx.lineWidth = 3; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  ctx.beginPath();
+  ctx.moveTo(80,120); ctx.lineTo(80,200); ctx.moveTo(80,160); ctx.lineTo(115,160); ctx.moveTo(115,120); ctx.lineTo(115,200);
+  ctx.moveTo(130,120); ctx.lineTo(140,200); ctx.moveTo(155,120); ctx.lineTo(145,200); ctx.moveTo(130,120); ctx.lineTo(155,120);
+  ctx.moveTo(170,200); ctx.lineTo(170,120); ctx.lineTo(195,120); ctx.lineTo(195,160); ctx.lineTo(170,160); ctx.lineTo(195,200);
+  ctx.moveTo(210,120); ctx.lineTo(210,200); ctx.moveTo(210,120); ctx.lineTo(240,120); ctx.moveTo(225,120); ctx.lineTo(225,200);
+  ctx.moveTo(255,120); ctx.lineTo(255,200); ctx.lineTo(285,200); ctx.moveTo(255,160); ctx.lineTo(275,160);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(100,240); ctx.lineTo(160,240); ctx.moveTo(130,230); ctx.lineTo(130,250);
+  ctx.moveTo(170,240); ctx.bezierCurveTo(180,220,220,220,230,240); ctx.bezierCurveTo(240,260,270,260,280,240);
+  ctx.stroke();
+}
+function drawGhost(ctx, W, H) {
+  drawClean(ctx, W, H);
+  ctx.strokeStyle = 'rgba(60,60,80,.22)'; ctx.lineWidth = 2.5; ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(80,120); ctx.lineTo(80,200); ctx.moveTo(80,160); ctx.lineTo(115,160); ctx.moveTo(115,120); ctx.lineTo(115,200);
+  ctx.moveTo(130,120); ctx.lineTo(140,200); ctx.moveTo(155,120); ctx.lineTo(145,200); ctx.moveTo(130,120); ctx.lineTo(155,120);
+  ctx.moveTo(170,200); ctx.lineTo(170,120); ctx.lineTo(195,120); ctx.lineTo(195,160); ctx.lineTo(170,160); ctx.lineTo(195,200);
+  ctx.stroke();
+  ctx.fillStyle = 'rgba(245,240,230,.45)';
+  ctx.beginPath(); ctx.ellipse(150,165,90,50,0,0,Math.PI*2); ctx.fill();
+  ctx.strokeStyle = 'rgba(60,60,80,.14)'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(90,130); ctx.lineTo(90,190); ctx.moveTo(90,160); ctx.lineTo(115,160); ctx.moveTo(115,130); ctx.lineTo(115,190); ctx.stroke();
+}
+function drawPartial(ctx, W, H) {
+  drawClean(ctx, W, H);
+  ctx.strokeStyle = '#1a1a2e'; ctx.lineWidth = 3; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(80,120); ctx.lineTo(80,200); ctx.moveTo(80,160); ctx.lineTo(115,160); ctx.moveTo(115,120); ctx.lineTo(115,200); ctx.stroke();
+  ctx.strokeStyle = 'rgba(26,26,46,.2)'; ctx.lineWidth = 2.5;
+  ctx.beginPath(); ctx.moveTo(210,120); ctx.lineTo(210,200); ctx.moveTo(210,120); ctx.lineTo(240,120); ctx.moveTo(225,120); ctx.lineTo(225,200); ctx.stroke();
+  ctx.fillStyle = 'rgba(245,240,230,.6)';
+  ctx.beginPath(); ctx.ellipse(270,165,80,35,0.1,0,Math.PI*2); ctx.fill();
+  ctx.strokeStyle = 'rgba(26,26,46,.35)'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(310,130); ctx.bezierCurveTo(330,120,360,140,380,130); ctx.moveTo(310,160); ctx.lineTo(400,160); ctx.moveTo(340,145); ctx.lineTo(340,185); ctx.stroke();
+}
+
+function buildThumbs() {
+  const row = document.getElementById('thumb-row'); if (!row) return;
+  BOARDS.forEach((b,i) => {
+    const wrap = document.createElement('div');
+    wrap.className = 'board-thumb' + (i===0?' selected':''); wrap.id = 'thumb-'+i;
+    const tc = document.createElement('canvas'); tc.width=110; tc.height=68;
+    const tx = tc.getContext('2d'); tx.scale(110/W, 68/H); b.draw(tx, W, H);
+    wrap.appendChild(tc); wrap.addEventListener('click', () => selectBoard(i)); row.appendChild(wrap);
+  });
+}
+function selectBoard(idx) {
+  document.querySelectorAll('.board-thumb').forEach((t,i) => t.classList.toggle('selected', i===idx));
+  curBoard = idx; updateBoardInfo(); drawBoard(idx); drawAnnotations();
+}
+function updateBoardInfo() {
+  const b = BOARDS[curBoard], ann = annotations[curBoard];
+  const info = document.getElementById('board-info'); if (!info) return;
+  const hasAnn = ann.length > 0, correct = hasAnn && ann[ann.length-1].cls === b.correct;
+  info.innerHTML = `<strong style="color:#0f172a">${b.name}</strong><br/><span style="color:#64748b;font-size:12px">${b.hint}</span>` +
+    (hasAnn ? `<br/><br/><span style="color:${correct?'#10b981':'#ef4444'};font-weight:700;font-size:12.5px">${correct?'✓ Correct class':'✗ Wrong class — re-read the hint'}</span>` : '');
+}
+function drawBoard(idx) { ctx.clearRect(0,0,W,H); BOARDS[idx].draw(ctx, W, H); }
+function drawAnnotations() {
+  annotations[curBoard].forEach(box => {
+    const color = box.cls==='clean' ? '#10b981' : '#ef4444';
+    ctx.strokeStyle = color; ctx.lineWidth = 2.5; ctx.setLineDash([]);
+    ctx.strokeRect(box.x, box.y, box.w, box.h);
+    ctx.fillStyle = box.cls==='clean' ? 'rgba(16,185,129,.08)' : 'rgba(239,68,68,.08)';
+    ctx.fillRect(box.x, box.y, box.w, box.h);
+    const lbl = box.cls==='clean' ? 'clean_board' : 'dirty_board';
+    ctx.fillStyle = color; ctx.fillRect(box.x, box.y-20, ctx.measureText(lbl).width+12, 20);
+    ctx.fillStyle = '#fff'; ctx.font = 'bold 11px system-ui'; ctx.fillText(lbl, box.x+6, box.y-6);
+  });
+  if (tempBox) {
+    ctx.strokeStyle = activeClass==='clean' ? '#10b981' : '#ef4444';
+    ctx.lineWidth = 2; ctx.setLineDash([6,3]);
+    ctx.strokeRect(tempBox.x, tempBox.y, tempBox.w, tempBox.h); ctx.setLineDash([]);
+  }
+  updateLabelSidebar(); updateProgress(); updateBoardInfo();
+}
+canvas.addEventListener('mousedown', e => {
+  const r = canvas.getBoundingClientRect();
+  startX = e.clientX-r.left; startY = e.clientY-r.top; isDrawing = true; tempBox = null;
+});
+canvas.addEventListener('mousemove', e => {
+  if (!isDrawing) return;
+  const r = canvas.getBoundingClientRect();
+  const mx = e.clientX-r.left, my = e.clientY-r.top;
+  tempBox = {x:Math.min(startX,mx), y:Math.min(startY,my), w:Math.abs(mx-startX), h:Math.abs(my-startY)};
+  drawBoard(curBoard); drawAnnotations();
+});
+canvas.addEventListener('mouseup', e => {
+  if (!isDrawing) return; isDrawing = false;
+  if (tempBox && tempBox.w>10 && tempBox.h>10) {
+    annotations[curBoard].push({...tempBox, cls:activeClass});
+    boardedBoards.add(curBoard);
+  }
+  tempBox = null; drawBoard(curBoard); drawAnnotations();
+});
+canvas.addEventListener('mouseleave', e => {
+  if (!isDrawing) return; isDrawing = false;
+  if (tempBox && tempBox.w>10 && tempBox.h>10) {
+    annotations[curBoard].push({...tempBox, cls:activeClass}); boardedBoards.add(curBoard);
+  }
+  tempBox = null; drawBoard(curBoard); drawAnnotations();
+});
+function setClass(cls) {
+  activeClass = cls;
+  document.getElementById('btn-clean').className = 'cls-btn'+(cls==='clean'?' active-clean':'');
+  document.getElementById('btn-dirty').className = 'cls-btn'+(cls==='dirty'?' active-dirty':'');
+  document.getElementById('canvas-wrap').className = 'mode-'+cls;
+}
+function undoLast() {
+  if (annotations[curBoard].length>0) { annotations[curBoard].pop(); drawBoard(curBoard); drawAnnotations(); }
+}
+function clearAll() {
+  annotations[curBoard]=[]; boardedBoards.delete(curBoard); drawBoard(curBoard); drawAnnotations();
+}
+function updateLabelSidebar() {
+  const sb = document.getElementById('label-sidebar'); if (!sb) return;
+  const ann = annotations[curBoard];
+  if (ann.length===0) { sb.innerHTML='<div style="color:#94a3b8;font-size:13px;text-align:center;padding:20px 0;border:1.5px dashed #e2e8f0;border-radius:10px">No boxes yet.<br/>Draw one to start.</div>'; return; }
+  sb.innerHTML='';
+  ann.forEach((box,i) => {
+    const el = document.createElement('div'); el.className='label-entry '+box.cls;
+    const cx=((box.x+box.w/2)/W).toFixed(3), cy=((box.y+box.h/2)/H).toFixed(3);
+    const bw=(box.w/W).toFixed(3), bh=(box.h/H).toFixed(3), cid=box.cls==='clean'?0:1;
+    el.innerHTML=`<div><div style="font-weight:700;font-size:12.5px;color:${box.cls==='clean'?'#166534':'#991b1b'}">${box.cls}_board (ID ${cid})</div><div style="font-size:11px;color:#94a3b8;font-family:monospace;margin-top:2px">${cid} ${cx} ${cy} ${bw} ${bh}</div></div><button class="label-del" onclick="deleteLbl(${i})">✕</button>`;
+    sb.appendChild(el);
+  });
+}
+function deleteLbl(i) {
+  annotations[curBoard].splice(i,1);
+  if (annotations[curBoard].length===0) boardedBoards.delete(curBoard);
+  drawBoard(curBoard); drawAnnotations();
+}
+function updateProgress() {
+  const done=boardedBoards.size, pct=(done/BOARDS.length)*100;
+  const pb=document.getElementById('prog-bar'); if(pb) pb.style.width=pct+'%';
+  const pl=document.getElementById('prog-label'); if(pl) pl.textContent=`${done} / ${BOARDS.length} boards`;
+}
+function initCanvas() {
+  buildThumbs(); drawBoard(0); updateBoardInfo(); updateProgress();
+}
+setTimeout(initCanvas, 200);
+</script>
+</body>
+</html>
