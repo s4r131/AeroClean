@@ -46,6 +46,7 @@ def main() -> None:
                 t_last_print = now
 
             cv2.imshow("AeroClean — Camera Test", frame)
+
             if cv2.waitKey(1) & 0xFF == ord("q"):
                 print("[CAM TEST] Quit.")
                 break

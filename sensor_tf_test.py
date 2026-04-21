@@ -76,8 +76,35 @@ def read_frame(ser) -> tuple[float | None, int, float] | None:
 
 
 def main() -> None:
-    p = argparse.ArgumentParser(description="TF-Luna / TFMini UART range sensor test")
-    p.add_argument("--config", default="config.json")
+    p = argparse.ArgumentParser(
+        description=(
+            "TF-Luna / TFMini UART range sensor test.\n"
+            "\n"
+            "Reads the Benewake 9-byte binary frame over UART and prints distance,\n"
+            "signal strength, and chip temperature to the terminal every frame.\n"
+            "\n"
+            "Use this script to:\n"
+            "  - Confirm the sensor is wired correctly and sending data\n"
+            "  - Verify the UART path and baud rate in config.json\n"
+            "  - Check signal strength (low strength = weak reflection, aim for >100)\n"
+            "  - Spot out-of-range readings (sensor reports distance=invalid)\n"
+            "\n"
+            "Troubleshooting:\n"
+            "  No data / timeout   →  check TX/RX wiring (swap if needed)\n"
+            "  Wrong baud rate     →  TF-Luna default is 115200, TFMini is also 115200\n"
+            "  Permission denied   →  run: sudo usermod -aG dialout $USER  then reboot\n"
+            "  Port not found      →  run: ls -l /dev/ttyAMA*  to find your device\n"
+        ),
+        formatter_class=argparse.RawTextHelpFormatter,
+    )
+    p.add_argument(
+        "--config", default="config.json",
+        help=(
+            "Path to config.json (default: config.json).\n"
+            "Must contain tf_sensor.uart set to your UART device path,\n"
+            "e.g.  \"tf_sensor\": { \"uart\": \"/dev/ttyAMA3\" }"
+        ),
+    )
     args = p.parse_args()
 
     with open(args.config) as f:

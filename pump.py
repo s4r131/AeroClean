@@ -35,11 +35,13 @@ class Pump:
 
         if pin is None:
             print("[PUMP] GPIO pin not yet assigned — running as no-op. Set 'pump_gpio_pin' in config.json.")
+
         elif not RPI_GPIO_AVAILABLE:
             print(
                 f"[PUMP] RPi.GPIO not available — Pump(pin={pin}) running as no-op. "
                 "Install RPi.GPIO on a Raspberry Pi for real operation."
             )
+
         else:
             GPIO.setmode(GPIO.BCM)
             GPIO.setup(self._pin, GPIO.OUT, initial=GPIO.LOW)
@@ -51,8 +53,10 @@ class Pump:
         Blocking — the mission state machine does nothing else during cleaning.
         """
         print(f"[PUMP] Spraying for {duration_sec:.1f}s on pin {self._pin}")
+
         if self._available:
             GPIO.output(self._pin, GPIO.HIGH)
+
         time.sleep(duration_sec)
         self.stop()
 

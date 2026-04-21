@@ -26,8 +26,39 @@ from sensors import SensorReader
 
 
 def main() -> None:
-    p = argparse.ArgumentParser(description="MTF-02P optical flow sensor test")
-    p.add_argument("--config", default="config.json")
+    p = argparse.ArgumentParser(
+        description=(
+            "MicoAir MTF-02P optical flow + range sensor test.\n"
+            "\n"
+            "Reads MAVLink messages from the MTF-02P over UART and prints live\n"
+            "optical flow (flow_x, flow_y) and distance readings every second.\n"
+            "\n"
+            "The MTF-02P sends two MAVLink message types:\n"
+            "  DISTANCE_SENSOR (ID 132)  —  range in metres\n"
+            "  OPTICAL_FLOW    (ID 100)  —  flow_x, flow_y velocities + quality (0-255)\n"
+            "\n"
+            "Use this script to:\n"
+            "  - Confirm the MTF-02P is wired and sending MAVLink data\n"
+            "  - Verify the UART path in config.json under mission.sensor_uart\n"
+            "  - Check optical flow quality (255 = best, below 50 = unreliable)\n"
+            "  - Confirm distance readings are plausible before running the mission\n"
+            "\n"
+            "Troubleshooting:\n"
+            "  No data at all      →  check TX/RX wiring (swap if needed)\n"
+            "  Quality always 0    →  sensor needs a textured surface to track, aim at the floor\n"
+            "  Port not found      →  run: ls -l /dev/ttyAMA*  to find your device\n"
+            "  Permission denied   →  run: sudo usermod -aG dialout $USER  then reboot\n"
+        ),
+        formatter_class=argparse.RawTextHelpFormatter,
+    )
+    p.add_argument(
+        "--config", default="config.json",
+        help=(
+            "Path to config.json (default: config.json).\n"
+            "Must contain mission.sensor_uart set to your UART device path,\n"
+            "e.g.  \"mission\": { \"sensor_uart\": \"/dev/ttyAMA3\" }"
+        ),
+    )
     args = p.parse_args()
 
     with open(args.config) as f:
@@ -58,9 +89,11 @@ def main() -> None:
             flow = reader.get_optical_flow()
             if dist is None and flow is None:
                 print("[FLOW TEST] No data yet — check UART wiring and baud rate")
+
             else:
                 if dist is not None:
                     print(f"[FLOW TEST] distance={dist:.3f}m")
+
                 if flow is not None:
                     print(f"[FLOW TEST] flow_x={flow['flow_x']:.3f}  "
                           f"flow_y={flow['flow_y']:.3f}  quality={flow['quality']}")

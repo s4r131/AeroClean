@@ -726,6 +726,31 @@ For full model details, training walkthrough, configuration reference, and syste
 
 ---
 
+## Supplementary — Benewake Binary Frame Protocol
+
+The TF-Luna and TFMini sensors use a 9-byte binary frame over UART. Every reading is delivered in this exact structure:
+
+```
+Byte 0    Byte 1    Byte 2    Byte 3    Byte 4    Byte 5    Byte 6    Byte 7    Byte 8
+0x59      0x59      DIST_L    DIST_H    STR_L     STR_H     TEMP_L    TEMP_H    CHECKSUM
+```
+
+| Byte(s) | Name | Description |
+|---|---|---|
+| 0–1 | Header | Always `0x59 0x59` — marks the start of every frame |
+| 2–3 | Distance | Distance in centimetres, little-endian. `dist_cm = byte2 \| (byte3 << 8)` |
+| 4–5 | Strength | Signal strength — how much light reflected back. Higher = more reliable reading |
+| 6–7 | Temperature | Chip temperature. `temp_c = (byte6 \| (byte7 << 8)) / 8.0 - 256` |
+| 8 | Checksum | Sum of bytes 0–7 truncated to 8 bits: `sum(frame[:8]) & 0xFF` |
+
+**Special values:**
+- `0xFFFF` in the distance bytes means the reading is out of range or invalid — treat as no reading
+- Checksum mismatch means the frame was corrupted in transit — discard it and read the next one
+
+**Little-endian** means the low byte comes first. So a distance of 150 cm would be stored as `byte2 = 0x96, byte3 = 0x00` — you shift byte3 left 8 bits and OR it with byte2 to reconstruct the full number.
+
+---
+
 ## License
 
 See [LICENSE](LICENSE).

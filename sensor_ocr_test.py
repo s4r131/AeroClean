@@ -39,15 +39,45 @@ from sensors import RangeSensor, TFRangeSensor
 # ─────────────────────────────────────────────────────────────────────────────
 
 def _build_parser() -> argparse.ArgumentParser:
-    p = argparse.ArgumentParser(description="AeroClean — sensor + OCR integration test")
-    p.add_argument("--config", default="config.json", help="Path to config.json")
-    p.add_argument("--source", default=None, help="Image or video file for offline testing")
+    p = argparse.ArgumentParser(
+        description=(
+            "AeroClean — range sensor + OCR integration test.\n"
+            "\n"
+            "Shows a live OpenCV window with OCR bounding boxes and a distance overlay.\n"
+            "When the word 'dirty' is detected the banner turns red and shows the range reading.\n"
+            "\n"
+            "Use this script to:\n"
+            "  - Confirm the OCR pipeline and range sensor work together correctly\n"
+            "  - Verify distance readings appear on screen when a dirty board is detected\n"
+            "  - Test with a saved image or video before connecting live hardware\n"
+            "  - Compare sensor A (I2C) vs sensor B (UART) in a real scenario\n"
+            "\n"
+            "Troubleshooting:\n"
+            "  No distance shown    →  check sensor wiring and run the sensor test script first\n"
+            "  OCR never triggers   →  write the word 'dirty' on the board in clear marker\n"
+            "  Sensor B not found   →  set tf_sensor.uart in config.json first\n"
+        ),
+        formatter_class=argparse.RawTextHelpFormatter,
+    )
+    p.add_argument(
+        "--config", default="config.json",
+        help="Path to config.json (default: config.json).",
+    )
+    p.add_argument(
+        "--source", default=None,
+        help=(
+            "Path to an image or video file for offline testing.\n"
+            "Omit to use the live Raspberry Pi camera.\n"
+            "Supported: .jpg .png .bmp .mp4 .avi and other OpenCV formats."
+        ),
+    )
     p.add_argument(
         "--sensor", choices=["a", "b"], default="a",
         help=(
-            "Range sensor type:\n"
-            "  a  VL53L3CX (I2C, default) — reads range_sensor.i2c_address from config.json\n"
-            "  b  TF-Luna / TFMini (UART) — reads tf_sensor.uart from config.json"
+            "Which range sensor to use:\n"
+            "  a  VL53L3CX over I2C (default) — reads range_sensor.i2c_address from config.json\n"
+            "  b  TF-Luna / TFMini over UART  — reads tf_sensor.uart from config.json\n"
+            "Run sensor_range_test.py or sensor_tf_test.py first to confirm the sensor works."
         ),
     )
     return p

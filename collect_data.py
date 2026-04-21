@@ -83,7 +83,6 @@ def main():
         while captured < args.count:
             frame = cam.capture()
 
-            # Counter overlay
             preview = frame.copy()
             cv2.putText(preview, f"{args.cls}  {captured}/{args.count}", (10, 36),
                         cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 255, 0), 2)

@@ -83,6 +83,7 @@ class SensorReader:
             baud=self._baud,
             autoreconnect=True,
         )
+
         self._running = True
         self._thread = threading.Thread(target=self._read_loop, daemon=True, name="SensorReader")
         self._thread.start()
@@ -314,11 +315,13 @@ class TFRangeSensor:
         """Open the UART and start the background reader thread."""
         if not SERIAL_AVAILABLE:
             return
+
         try:
             self._ser = _serial.Serial(self._uart_port, self._baud, timeout=1)
         except _serial.SerialException as e:
             print(f"[TF RANGE] Could not open {self._uart_port}: {e}")
             return
+
         self._running = True
         self._thread = threading.Thread(target=self._read_loop, daemon=True, name="TFRangeSensor")
         self._thread.start()
@@ -360,18 +363,23 @@ class TFRangeSensor:
                 return None
             if b1[0] != 0x59:
                 continue
+
             b2 = self._ser.read(1)
             if not b2 or b2[0] != 0x59:
                 continue
+
             rest = self._ser.read(7)
             if len(rest) != 7:
                 return None
+
             frame = bytes([0x59, 0x59]) + rest
             if (sum(frame[:8]) & 0xFF) != frame[8]:
                 continue
+
             dist_cm = frame[2] | (frame[3] << 8)
             if dist_cm == 0xFFFF:
                 return None
+
             return dist_cm / 100.0
         return None
 
