@@ -301,46 +301,6 @@ The `no ... = none` pattern means the pin is sitting idle with no peripheral att
 
 ---
 
-#### Sub-step 0 — Disable the serial login shell
-
-> **Do this before enabling UART0.** The Pi OS attaches a login console to the primary UART by default. If it is still running when ArduPilot connects, the OS and the flight controller will fight over the same wire and MAVLink will never connect.
-
-**a) Remove the serial console from the kernel command line:**
-
-```bash
-sudo nano /boot/firmware/cmdline.txt
-```
-
-The file contains a single long line. Find and delete the token `console=serial0,115200` from that line. Leave everything else exactly as-is. Save and close (`Ctrl+O`, `Enter`, `Ctrl+X`).
-
-> **Do NOT use `raspi-config` for this step on Pi 5.** On Bookworm, `raspi-config` edits the wrong file and the change has no effect. Edit `/boot/firmware/cmdline.txt` directly.
-
-**b) Disable the serial getty service:**
-
-```bash
-sudo systemctl disable serial-getty@ttyAMA0.service
-sudo systemctl stop serial-getty@ttyAMA0.service
-```
-
-Reboot:
-```bash
-sudo reboot
-```
-
-After rebooting, reconnect via SSH, then re-enter the project and activate the environment:
-```bash
-cd ~/AeroClean
-source aeroclean_env/bin/activate
-```
-
-Verify nothing is holding the UART:
-```bash
-# Should return nothing — no getty process on the serial port
-ls -l /proc/tty/driver/ | grep serial
-```
-
----
-
 #### Sub-step 1 — Enable UART0 (ArduPilot FC)
 
 Open the file with:
@@ -477,6 +437,48 @@ sudo i2cdetect -y 1
 Expected: `29` appears at address `0x29` in the grid. If the grid is all dashes, check the VIN/GND/SDA/SCL wiring.
 
 > ✓ **Before continuing:** confirm `29` appears in the `i2cdetect` grid above.
+
+---
+
+#### Sub-step 0 — Disable the serial login shell
+
+> **Do this after enabling your UARTs and I2C above, before the mission step.** The Pi OS attaches a login console to the primary UART by default. If it is still running when ArduPilot connects, the OS and the flight controller will fight over the same wire and MAVLink will never connect.
+
+**a) Remove the serial console from the kernel command line:**
+
+```bash
+sudo nano /boot/firmware/cmdline.txt
+```
+
+The file contains a single long line. Find and delete the token `console=serial0,115200` from that line. Leave everything else exactly as-is. Save and close (`Ctrl+O`, `Enter`, `Ctrl+X`).
+
+> **Do NOT use `raspi-config` for this step on Pi 5.** On Bookworm, `raspi-config` edits the wrong file and the change has no effect. Edit `/boot/firmware/cmdline.txt` directly.
+
+**b) Disable the serial getty service:**
+
+```bash
+sudo systemctl disable serial-getty@ttyAMA0.service
+sudo systemctl stop serial-getty@ttyAMA0.service
+```
+
+Reboot:
+```bash
+sudo reboot
+```
+
+After rebooting, reconnect via SSH, then re-enter the project and activate the environment:
+```bash
+cd ~/AeroClean
+source aeroclean_env/bin/activate
+```
+
+Verify nothing is holding the UART:
+```bash
+ls -l /proc/tty/driver/ | grep serial
+```
+This should return nothing — if a getty process appears, the service did not disable correctly.
+
+> ✓ **Before continuing:** confirm the command above returns no output.
 
 ---
 
