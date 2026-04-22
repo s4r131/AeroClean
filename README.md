@@ -13,18 +13,16 @@ AeroClean runs on a **Raspberry Pi**. You can interact with it over SSH from you
 On the Pi itself (if you have a monitor attached once):
 ```bash
 hostname -I
-# Example output: 192.168.1.42
 ```
-Or check your router's connected devices list.
+This prints your Pi's IP address (e.g. `192.168.1.42`). Or check your router's connected devices list.
 
 **Step 2 — Connect from your laptop**
 
 Open a terminal on your laptop and SSH in:
 ```bash
 ssh pi@<PI_IP>
-# Example: ssh pi@192.168.1.42
 ```
-You are now running commands on the Pi remotely.
+Replace `<PI_IP>` with your Pi's address (e.g. `192.168.1.42`). You are now running commands on the Pi remotely.
 
 > **First time here?** You must complete the [Setup](#setup) steps below before running anything. Do not skip ahead.
 
@@ -190,8 +188,8 @@ sudo apt install -y python3-picamera2 tesseract-ocr libcap-dev i2c-tools
 Then verify the camera is detected:
 ```bash
 libcamera-hello --list-cameras
-# Expected output contains: IMX708
 ```
+The output should contain `IMX708` if the camera is detected correctly.
 
 > ✓ **Before continuing:** you should see `IMX708` in the output above. If the camera is not listed, check the CSI ribbon cable connection and try again.
 
@@ -207,8 +205,8 @@ cd AeroClean
 Verify the files are there:
 ```bash
 ls
-# Expected: you should see main.py, config.json, requirements.txt, etc.
 ```
+You should see `main.py`, `config.json`, `requirements.txt`, and the rest of the project files.
 
 > ✓ **Before continuing:** confirm `main.py` and `config.json` appear in the output above.
 
@@ -422,7 +420,17 @@ ls -l /dev/serial*
 ```
 This shows symlinks like `/dev/serial0 -> ttyAMA0` — use the **`/dev/serialX` path directly** in config.json (not the `ttyAMAx` it points to). Note the alias for the TF sensor — it goes into `config.json → tf_sensor.uart` (section `_s6`).
 
-> ✓ **Before continuing:** confirm the new UART device appears in `ls -l /dev/serial*` and note the path.
+**Debug check — confirm raw bytes are arriving before running any scripts:**
+
+From the `ls -l /dev/serial*` output, find the `ttyAMAx` name that your TF sensor port points to (e.g. `ttyAMA3`). Then run:
+```bash
+sudo cat /dev/ttyAMA3
+```
+Replace `ttyAMA3` with whatever name appeared in the symlink output. If the sensor is powered and wired correctly you will see a stream of garbled characters — that is the raw binary frames from the TF sensor. Press `Ctrl+C` to stop.
+
+If you see nothing, check TX/RX wiring (swap them if needed), confirm the sensor has power, and re-check which overlay you added in config.txt.
+
+> ✓ **Before continuing:** confirm the new UART device appears in `ls -l /dev/serial*`, raw bytes appear with `sudo cat`, and you have noted the `/dev/serialX` path.
 
 ---
 
@@ -525,8 +533,8 @@ sudo usermod -aG dialout $USER
 Log out and back in (or reboot) for the group change to take effect. Verify:
 ```bash
 groups
-# Expected output includes: dialout
 ```
+The output should include `dialout`.
 
 > ✓ **Before continuing:** confirm `dialout` appears in the `groups` output above.
 
