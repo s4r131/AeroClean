@@ -109,7 +109,7 @@ How all the hardware pieces connect and what each one does.
 │                                         │
 │  IMX708 Camera     →  YOLO detection    │
 │  MTF-02P (UART)    →  optical flow      │
-│  VL53L3CX (I2C)    →  forward range     │
+│  TF-Luna/TFMini (UART) →  forward range  │
 │  Mission state machine                  │
 │  GPIO pump pin     →  pump relay        │
 │  GPIO wiper pin    →  wiper arm         │
