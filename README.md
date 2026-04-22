@@ -59,7 +59,7 @@ AeroClean/
 ├── yolo_model.py         # Model 2: YOLO11n NCNN inference
 ├── mission.py            # Autonomous mission state machine (IDLE→SCAN→APPROACH→CLEAN→RETURN)
 ├── mavlink_controller.py # DroneKit wrapper — arm, takeoff, velocity commands, RTL
-├── sensors.py            # MTF-02P optical flow reader + TF-Luna/TFMini UART range (sensor A, default) + VL53L3CX I2C range (sensor B)
+├── sensors.py            # TF-Luna/TFMini UART range (sensor A, default) + VL53L3CX I2C range (sensor B)
 ├── pump.py               # GPIO pump controller
 ├── wiper.py              # Wiper arm controller (actuator TBD)
 ├── sensor_tf_test.py     # TF-Luna / TFMini UART range sensor standalone test
@@ -90,7 +90,7 @@ AeroClean/
 | **Camera** | Arducam / Raspberry Pi Camera Module 3 — IMX708, 12MP, 75° diagonal |
 | **Camera connection** | CSI ribbon cable (included with Camera Module 3) |
 | **Flight controller** | ArduPilot-compatible FC (e.g. Pixhawk) — connected to Pi via UART (confirm path with `ls -l /dev/serial*`) |
-| **Flow sensor** | MicoAir MTF-02P optical flow sensor — connected to Pi via UART (second port) |
+| **Flow sensor** | MicoAir MTF-02P optical flow sensor — connected to the FC optical flow UART port (not the Pi) |
 | **Range sensor** | **Sensor A (default):** TF-Luna / TFMini — UART (set `tf_sensor.uart` in config.json)  **or  Sensor B:** VL53L3CX ToF — I2C, GPIO 2/3 (pins 3/5), 3 m range (set `range_sensor.type = "b"`) |
 | **Pump** | Relay-driven pump on BCM GPIO pin (configurable in `config.json`) |
 | **Wiper** | Wiper arm on BCM GPIO pin — actuator type TBD (configurable in `config.json`) |
@@ -107,21 +107,22 @@ How all the hardware pieces connect and what each one does.
 ┌─────────────────────────────────────────┐
 │           Raspberry Pi 5                │
 │                                         │
-│  IMX708 Camera     →  YOLO detection    │
-│  MTF-02P (UART)    →  optical flow      │
-│  TF-Luna/TFMini (UART) →  forward range  │
+│  IMX708 Camera         →  YOLO detection│
+│  TF-Luna/TFMini (UART) →  forward range │
 │  Mission state machine                  │
-│  GPIO pump pin     →  pump relay        │
-│  GPIO wiper pin    →  wiper arm         │
+│  GPIO pump pin         →  pump relay    │
+│  GPIO wiper pin        →  wiper arm     │
 │                                         │
 │  DroneKit (MAVLink over UART)           │
 └──────────────┬──────────────────────────┘
                │ UART — MAVLink
 ┌──────────────▼──────────────────────────┐
-│         ArduPilot FC                    │
+│           ArduPilot FC                  │
+│                                         │
 │  Attitude stabilisation (own IMU)       │
 │  Motor control                          │
 │  GUIDED mode — accepts velocity targets │
+│  MTF-02P (UART)      →  optical flow/EKF│
 └─────────────────────────────────────────┘
 ```
 
@@ -129,17 +130,27 @@ ArduPilot handles all low-level stabilisation. The Pi sends body-frame velocity 
 
 ### Wiring
 
-| Pi connection | Device | Purpose |
+**Raspberry Pi connections**
+
+| Pi interface | Device | Purpose |
 |---|---|---|
 | UART (e.g. `/dev/serial0`) | ArduPilot FC TELEM port | MAVLink command channel (DroneKit) |
-| UART (e.g. `/dev/serial2`) | MTF-02P UART | Optical flow (pymavlink) |
-| UART (e.g. `/dev/serial3`) | TF-Luna / TFMini (sensor A, default) | Forward range for approach controller |
+| UART (e.g. `/dev/serial2`) | TF-Luna / TFMini (sensor A, default) | Forward range for approach controller |
 | I2C GPIO 2/3 (pins 3/5) | VL53L3CX (sensor B, alternative) | Forward range — I2C alternative to sensor A |
 | GPIO BCM pin (configurable) | Pump relay IN | Cleaning mechanism trigger |
 | GPIO BCM pin (configurable) | Wiper arm control wire | Wiper arm actuation |
 
+**ArduPilot FC connections**
+
+| FC interface | Device | Purpose |
+|---|---|---|
+| TELEM port (UART) | Raspberry Pi | MAVLink — receives velocity targets from DroneKit |
+| Optical flow port (UART) | MicoAir MTF-02P | Optical flow input for EKF position hold |
+| IMU (onboard) | — | Attitude estimation and stabilisation |
+| ESC outputs | Motors | Motor speed control |
+
 > **UART wiring is crossed — Pi TX connects to the device's RX, and Pi RX connects to the device's TX.**
-> Connecting TX→TX or RX→RX will produce no data. This applies to all UART devices: ArduPilot FC, MTF-02P, and TF-Luna/TFMini.
+> Connecting TX→TX or RX→RX will produce no data. This applies to all UART devices: ArduPilot FC and TF-Luna/TFMini.
 >
 > Full connection pattern for each UART device:
 > - Pi **TX** → Device **RX**
@@ -156,7 +167,7 @@ Gather everything before starting setup.
 - [ ] Raspberry Pi 5 (4 GB or 8 GB)
 - [ ] Camera Module 3 (IMX708) on CSI ribbon
 - [ ] ArduPilot flight controller — TELEM/UART port wired to Pi UART
-- [ ] MicoAir MTF-02P — UART wired to a second Pi UART
+- [ ] MicoAir MTF-02P — wired to the FC optical flow UART port (not the Pi)
 - [ ] Range sensor — **sensor A (default):** TF-Luna / TFMini (UART, wire to a free Pi UART)  **or  sensor B:** VL53L3CX (I2C, wire to GPIO 2/3, pins 3/5)
 - [ ] Pump + relay — relay IN wired to a free BCM GPIO pin
 - [ ] Wiper arm — control wire wired to a free BCM GPIO pin
@@ -350,7 +361,7 @@ Do **only one** of 2A or 2B depending on your hardware. Check `config.json → r
 
 Skip this if you are using a VL53L3CX (go to 2B instead).
 
-> **Note for sensor A builds:** you will need three UARTs total — UART0 (ArduPilot FC, sub-step 1), one for the MTF-02P (sub-step 3), and this one for the TF sensor. Plan your `dtoverlay=uartX` entries before rebooting.
+> **Note for sensor A builds:** you will need two overlay UARTs — one for the ArduPilot FC (sub-step 1) and one for the TF sensor (this step). The MTF-02P connects to the FC, not the Pi, so no extra Pi UART is needed for it.
 
 Open the file with:
 ```bash
@@ -482,49 +493,7 @@ This should return nothing — if a getty process appears, the service did not d
 
 ---
 
-#### Sub-step 3 — Enable additional UART (MTF-02P optical flow sensor)
-
-> The ArduPilot FC (sub-step 1) and the MTF-02P both use UART — each needs its own port and its own `dtoverlay=uartX` line in `config.txt`. Sensor A builds need a third port for the TF sensor (sub-step 2A).
-
-Open the file with:
-```bash
-sudo nano /boot/firmware/config.txt
-```
-Add a free overlay UART for the MTF-02P (e.g. `uart3`), then save and exit: press `Ctrl+O` → `Enter` → `Ctrl+X`.
-```
-dtoverlay=uartX
-```
-
-Pin assignments vary by UART number — always verify with `pinctrl -p` after rebooting.
-
-Then reboot:
-```bash
-sudo reboot
-```
-
-After rebooting, reconnect via SSH, then re-enter the project and activate the environment:
-```bash
-cd ~/AeroClean
-source aeroclean_env/bin/activate
-```
-
-Run `pinctrl -p` and look for physical pins 21 and 24 (UART3):
-
-```
-Before:
-21: no pd | -- // GPIO9  = none
-24: no pu | -- // GPIO8  = none
-
-After (expected):
-21: a2 pu | hi // GPIO9  = RXD3
-24: a2 pn | hi // GPIO8  = TXD3
-```
-
-> ✓ **Before continuing:** confirm `GPIO8 = TXD3` and `GPIO9 = RXD3` in your `pinctrl -p` output.
-
----
-
-#### Sub-step 4 — Add your user to the dialout group
+#### Sub-step 3 — Add your user to the dialout group
 
 Without this, any attempt to read `/dev/ttyAMA*` or open a DroneKit connection will fail with `Permission denied`.
 
@@ -550,19 +519,17 @@ After all sub-steps, your `config.txt` should contain at minimum:
 ```
 enable_uart=1
 dtoverlay=uartX
-dtoverlay=uartY
 ```
-Two overlay UARTs needed: one for MTF-02P (sub-step 3) and one for TF sensor (sub-step 2A). Replace `uartX` and `uartY` with the numbers you chose.
+One overlay UART needed for the TF sensor (sub-step 2A). Replace `uartX` with the number you chose.
 
 **Sensor B (VL53L3CX — I2C):**
 ```
 enable_uart=1
 dtparam=i2c_arm=on
-dtoverlay=uartX
 ```
-One overlay UART needed for the MTF-02P (sub-step 3). Replace `uartX` with the number you chose.
+No overlay UART needed — the VL53L3CX uses I2C.
 
-Add more `dtoverlay=uartX` lines if you have additional serial peripherals.
+Add `dtoverlay=uartX` lines for any additional serial peripherals.
 
 ---
 
@@ -575,9 +542,9 @@ ls -l /dev/serial*
 ```
 Example output:
 ```
-/dev/serial0 -> ttyAMA0   ← primary UART (ArduPilot FC via enable_uart=1)
-/dev/serial1 -> ttyAMA5   ← mini UART (Bluetooth)
-/dev/serial2 -> ttyAMA3   ← overlay UART (e.g. MTF-02P)
+/dev/serial0 -> ttyAMA0
+/dev/serial1 -> ttyAMA5
+/dev/serial2 -> ttyAMA3
 ```
 **Use the `/dev/serialX` path directly in config.json** — not the `ttyAMAx` it points to. This is what makes the port reliably accessible.
 
@@ -585,12 +552,11 @@ Once you know which alias belongs to each device, open `config.json`:
 ```bash
 sudo nano config.json
 ```
-Find the `_s8` section (Mission) and fill in the paths, then save and exit: press `Ctrl+O` → `Enter` → `Ctrl+X`.
+Find the `_s8` section (Mission) and fill in the MAVLink UART path, then save and exit: press `Ctrl+O` → `Enter` → `Ctrl+X`.
 ```json
-"mavlink_uart": "/dev/serial0",
-"sensor_uart":  "/dev/serial2"
+"mavlink_uart": "/dev/serial0"
 ```
-Replace the numbers with the aliases you found above. **Values must stay inside double quotes** — e.g. `"/dev/serial0"`, not `/dev/serial0`.
+Replace the number with the alias for the ArduPilot FC. **Values must stay inside double quotes** — e.g. `"/dev/serial0"`, not `/dev/serial0`.
 
 ---
 
@@ -615,12 +581,11 @@ Open `config.json`:
 ```bash
 sudo nano config.json
 ```
-Find the `_s8` section (Mission) and fill in your UART aliases, then save and exit: press `Ctrl+O` → `Enter` → `Ctrl+X`.
+Find the `_s8` section (Mission) and fill in the MAVLink UART alias, then save and exit: press `Ctrl+O` → `Enter` → `Ctrl+X`.
 ```json
-"mavlink_uart": "/dev/serial0",
-"sensor_uart":  "/dev/serial2"
+"mavlink_uart": "/dev/serial0"
 ```
-Replace the numbers with the aliases from `ls -l /dev/serial*`. **Values must stay inside double quotes** — e.g. `"/dev/serial0"`, not `/dev/serial0`.
+Replace the number with the alias for the ArduPilot FC from `ls -l /dev/serial*`. **Values must stay inside double quotes** — e.g. `"/dev/serial0"`, not `/dev/serial0`.
 
 Find the `_s5` section (Range sensor) and set your sensor type. Default is `"a"` (TF-Luna/TFMini). Change to `"b"` if using VL53L3CX:
 ```json
@@ -691,21 +656,7 @@ Expected:
 
 ---
 
-#### 4e — Step 4: Optical flow sensor
-
-Confirm the UART is active and the MTF-02P is sending data. Use the path you found in Step 3 of hardware setup.
-
-```bash
-python sensor_flow_test.py
-```
-Expected: flow and distance values printing every second.
-```
-[FLOW TEST] flow_x=0.012  flow_y=-0.003  quality=210
-```
-
----
-
-#### 4f — Step 5: Range sensor + OCR together
+#### 4e — Step 4: Range sensor + OCR together
 
 Confirm the full detection pipeline — this is what the mission APPROACH state does.
 
@@ -759,7 +710,6 @@ Set these `null` values before running mission mode. Run `ls -l /dev/serial*` to
 ```json
 "mission": {
   "mavlink_uart": "<your /dev/serialX for ArduPilot FC>",
-  "sensor_uart":  "<your /dev/serialX for MTF-02P>",
   "pump_gpio_pin": <BCM pin number for pump relay IN>
 },
 "range_sensor": {
