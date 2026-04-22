@@ -4,8 +4,8 @@ sensors.py — Sensor readers for the AeroClean companion computer.
 Three classes, all with thread-safe background reads:
 
     SensorReader   — MicoAir MTF-02P optical flow + range sensor (MAVLink over UART).
-    RangeSensor    — VL53L3CX ToF forward range sensor over I2C  (sensor A).
-    TFRangeSensor  — TF-Luna / TFMini forward range sensor over UART  (sensor B).
+    TFRangeSensor  — TF-Luna / TFMini forward range sensor over UART  (sensor A, default).
+    RangeSensor    — VL53L3CX ToF forward range sensor over I2C  (sensor B).
 
 RangeSensor and TFRangeSensor share the same public API (start / stop / get_distance)
 so the mission approach controller works with either sensor without modification.

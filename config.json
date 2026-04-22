@@ -43,26 +43,26 @@
   "_s5": "── Range sensor ─────────────────────────────────────────────────────────",
 
   "range_sensor": {
-    "_note": "Forward range sensor used by the mission approach controller and sensor_ocr_test.py. Set type to match your hardware — sensor A uses I2C, sensor B uses UART.",
+    "_note": "Forward range sensor used by the mission approach controller and sensor_ocr_test.py. Set type to match your hardware — sensor A uses UART, sensor B uses I2C.",
 
     "type": "a",
-    "type_note": "Which range sensor is wired: 'a' = VL53L3CX (I2C, default)  |  'b' = TF-Luna / TFMini (UART). Sensor B also requires tf_sensor.uart to be set.",
+    "type_note": "Which range sensor is wired: 'a' = TF-Luna / TFMini (UART, default)  |  'b' = VL53L3CX (I2C). Sensor A also requires tf_sensor.uart to be set.",
 
     "i2c_address": 41,
-    "i2c_address_note": "Sensor A only. Default I2C address is 0x29 (decimal 41). Only change if the XSHUT pin was used to remap the address. Wiring: VIN→3.3V (pin 1), GND→GND (pin 6), SDA→GPIO2 (pin 3), SCL→GPIO3 (pin 5).",
+    "i2c_address_note": "Sensor B only. Default I2C address is 0x29 (decimal 41). Only change if the XSHUT pin was used to remap the address. Wiring: VIN→3.3V (pin 1), GND→GND (pin 6), SDA→GPIO2 (pin 3), SCL→GPIO3 (pin 5).",
 
     "timing_budget_ms": 50,
-    "timing_budget_ms_note": "Sensor A only. Measurement timing budget in milliseconds — controls speed vs accuracy tradeoff. Lower = faster readings, less accurate; higher = slower, more accurate. Valid range: 10–200 ms. 50 ms gives ~20 readings/s, good for indoor approach. Raise to 100 ms if range readings are unstable."
+    "timing_budget_ms_note": "Sensor B only. Measurement timing budget in milliseconds — controls speed vs accuracy tradeoff. Lower = faster readings, less accurate; higher = slower, more accurate. Valid range: 10–200 ms. 50 ms gives ~20 readings/s, good for indoor approach. Raise to 100 ms if range readings are unstable."
   },
 
 
-  "_s6": "── TF-Luna / TFMini (sensor B — UART range sensor) ──────────────────────",
+  "_s6": "── TF-Luna / TFMini (sensor A — UART range sensor, default) ─────────────",
 
   "tf_sensor": {
-    "_note": "Settings for the TF-Luna / TFMini UART range sensor. Used when range_sensor.type is 'b'. Also used by sensor_tf_test.py for standalone testing. Leave uart null if not using a TF-series sensor.",
+    "_note": "Settings for the TF-Luna / TFMini UART range sensor. Used when range_sensor.type is 'a' (default). Also used by sensor_tf_test.py for standalone testing. Set uart to your UART device path before running.",
 
     "uart": null,
-    "uart_note": "UART device path for the TF sensor, e.g. /dev/ttyAMA4. Find with: ls -l /dev/ttyAMA* after enabling the overlay in /boot/firmware/config.txt. Can be overridden at runtime with --uart flag.",
+    "uart_note": "Sensor A — required. UART device path for the TF sensor. Use the alias from ls -l /dev/serial* — e.g. /dev/serial0, /dev/serial2. Do not use the raw ttyAMAx number directly.",
 
     "baud": 115200,
     "baud_note": "Baud rate for the TF-Luna / TFMini. Fixed at 115200 by hardware — do not change."
@@ -100,16 +100,16 @@
   "_s8": "── Mission ──────────────────────────────────────────────────────────────",
 
   "mission": {
-    "_note": "Autonomous drone mission settings (python main.py --mode mission). All null values must be filled in before running. Run 'ls -l /dev/ttyAMA*' on the Pi to find UART device paths.",
+    "_note": "Autonomous drone mission settings (python main.py --mode mission). All null values must be filled in before running. Run 'ls -l /dev/serial*' on the Pi to find UART device aliases — use those paths (e.g. /dev/serial0) not the raw ttyAMAx numbers.",
 
     "mavlink_uart": null,
-    "mavlink_uart_note": "UART port connecting the Pi to the ArduPilot flight controller. Example: /dev/ttyAMA0. Must match the FC TELEM port — see README Setup Step 3.",
+    "mavlink_uart_note": "UART port connecting the Pi to the ArduPilot flight controller. Use the serial alias from ls -l /dev/serial* — e.g. /dev/serial0. Must match the FC TELEM port — see README Setup Step 3.",
 
     "mavlink_baud": 57600,
     "mavlink_baud_note": "Baud rate for the ArduPilot MAVLink connection. Must match SERIALx_BAUD on the FC. 57600 is the ArduPilot default for companion computers.",
 
     "sensor_uart": null,
-    "sensor_uart_note": "UART port connecting the Pi to the MicoAir MTF-02P optical flow sensor. Must be a different port from mavlink_uart. Example: /dev/ttyAMA3.",
+    "sensor_uart_note": "UART port connecting the Pi to the MicoAir MTF-02P optical flow sensor. Must be a different port from mavlink_uart. Use the serial alias from ls -l /dev/serial* — e.g. /dev/serial2.",
 
     "sensor_baud": 115200,
     "sensor_baud_note": "Baud rate for the MTF-02P. Fixed at 115200 by hardware — do not change.",

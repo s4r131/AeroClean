@@ -1,5 +1,5 @@
 """
-sensor_range_test.py — VL53L3CX ToF range sensor test.
+sensor_range_test.py — VL53L3CX ToF range sensor test (sensor B — I2C).
 
 Prints live distance readings. No camera, no OpenCV.
 

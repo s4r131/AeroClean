@@ -1,13 +1,9 @@
 """
-sensor_tf_test.py — TF-Luna / TFMini UART range sensor test.
+sensor_tf_test.py — TF-Luna / TFMini UART range sensor test (sensor A — default).
 
 Reads the Benewake binary frame protocol (0x59 0x59 header) over UART
-and prints distance in metres. Use this to verify a TF-series sensor
+and prints distance in metres. Use this to verify the TF-series sensor
 is wired and responding correctly.
-
-The TF-Luna and TFMini are NOT the same as the VL53L3CX (I2C) used by
-default in the mission. This script is an alternative test for builds
-that substitute a TF-series UART sensor for the I2C sensor.
 
 Prerequisites:
     UART enabled in /boot/firmware/config.txt (e.g. dtoverlay=uart3)

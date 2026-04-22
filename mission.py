@@ -143,30 +143,30 @@ class Mission:
         """
         Instantiate the forward range sensor based on range_sensor.type in config.json.
 
-          "a"  (default) — VL53L3CX over I2C  (RangeSensor)
-          "b"            — TF-Luna/TFMini over UART (TFRangeSensor)
+          "a"  (default) — TF-Luna/TFMini over UART (TFRangeSensor)
+          "b"            — VL53L3CX over I2C  (RangeSensor)
         """
         range_cfg   = cfg.get("range_sensor", {})
         sensor_type = str(range_cfg.get("type", "a")).lower()
 
         if sensor_type == "b":
-            tf_cfg   = cfg.get("tf_sensor", {})
-            tf_uart  = tf_cfg.get("uart")
-            if not tf_uart:
-                raise RuntimeError(
-                    "range_sensor.type is 'b' (TF-Luna) but tf_sensor.uart is not set "
-                    "in config.json. Set it to the UART path for the TF sensor "
-                    "(e.g. /dev/ttyAMA3)."
-                )
-            tf_baud = int(tf_cfg.get("baud", 115200))
-            print(f"[MISSION] Range sensor: TF-Luna/TFMini on {tf_uart} @ {tf_baud}")
-            return TFRangeSensor(tf_uart, baud=tf_baud)
+            i2c_address   = range_cfg.get("i2c_address", 0x29)
+            timing_budget = int(range_cfg.get("timing_budget_ms", 50))
+            print(f"[MISSION] Range sensor: VL53L3CX (I2C 0x{i2c_address:02X}, {timing_budget}ms budget)")
+            return RangeSensor(i2c_address, timing_budget_ms=timing_budget)
 
         # Default — sensor A
-        i2c_address     = range_cfg.get("i2c_address", 0x29)
-        timing_budget   = int(range_cfg.get("timing_budget_ms", 50))
-        print(f"[MISSION] Range sensor: VL53L3CX (I2C 0x{i2c_address:02X}, {timing_budget}ms budget)")
-        return RangeSensor(i2c_address, timing_budget_ms=timing_budget)
+        tf_cfg  = cfg.get("tf_sensor", {})
+        tf_uart = tf_cfg.get("uart")
+        if not tf_uart:
+            raise RuntimeError(
+                "range_sensor.type is 'a' (TF-Luna) but tf_sensor.uart is not set "
+                "in config.json. Set it to the UART path for the TF sensor "
+                "(e.g. /dev/ttyAMAx)."
+            )
+        tf_baud = int(tf_cfg.get("baud", 115200))
+        print(f"[MISSION] Range sensor: TF-Luna/TFMini on {tf_uart} @ {tf_baud}")
+        return TFRangeSensor(tf_uart, baud=tf_baud)
 
     # ─────────────────────────────────────────────────────────────────────────
     # Entry point

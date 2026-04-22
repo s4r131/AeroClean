@@ -7,13 +7,12 @@ Shows an OpenCV window with:
   - Status banner: DIRTY + distance in red, or CLEAN in green
 
 Two range sensor options:
-  --sensor a  VL53L3CX (I2C, default) — reads i2c_address from config.json
-  --sensor b  TF-Luna / TFMini (UART) — reads uart/baud from config.json tf_sensor
-              Override UART with --uart /dev/ttyAMAx
+  --sensor a  TF-Luna / TFMini (UART, default) — reads uart/baud from config.json tf_sensor
+  --sensor b  VL53L3CX (I2C) — reads i2c_address from config.json range_sensor
 
 Usage:
-    python sensor_ocr_test.py                              # sensor A, Pi camera
-    python sensor_ocr_test.py --sensor b --uart /dev/ttyAMA3
+    python sensor_ocr_test.py                              # sensor A (TF-Luna), Pi camera
+    python sensor_ocr_test.py --sensor b                  # sensor B (VL53L3CX)
     python sensor_ocr_test.py --source board.jpg           # offline image
     python sensor_ocr_test.py --config config.json
 
