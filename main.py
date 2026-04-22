@@ -40,8 +40,8 @@ def build_parser() -> argparse.ArgumentParser:
              "  mission   — run full MAVLink drone mission state machine",
     )
     p.add_argument(
-        "--model", choices=["ocr", "yolo"], required=False, default=None,
-        help="Which model to run (inference mode only):\n  ocr  — Tesseract OCR (finds word 'dirty')\n  yolo — YOLO11n board-state detector",
+        "--model", choices=["ocr", "yolo"], default="ocr",
+        help="Which model to run (inference mode only):\n  ocr  — Tesseract OCR (finds word 'dirty') [default]\n  yolo — YOLO11n board-state detector",
     )
     p.add_argument(
         "--source", default=None,
@@ -145,10 +145,6 @@ def main():
         from mission import Mission
         Mission(config_path=args.config).run()
         return
-
-    # ── Inference mode — --model is required ────────────────────────────────
-    if args.model is None:
-        build_parser().error("--model is required in inference mode (ocr or yolo)")
 
     cfg = load_config(args.config)
 

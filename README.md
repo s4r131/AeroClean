@@ -1,19 +1,52 @@
 # AeroClean
 
-Autonomous MAVLink drone that cleans dirty dry-erase boards. A **Raspberry Pi 5** acts as the companion computer — running a **YOLO11n object detector** and a **Tesseract OCR pipeline** to detect board state, then commanding an **ArduPilot** flight controller over UART to take off, scan the room, approach the board, and trigger a pump to clean it.
+Autonomous MAVLink drone that cleans dirty dry-erase boards. A **Raspberry Pi 5** acts as the companion computer — running a **YOLO11n object detector** and/or a **Tesseract OCR pipeline** to detect board state, then commanding an **ArduPilot** flight controller over UART to take off, scan the room, approach the board, and trigger a pump to clean it.
 
 ---
 
-## Quick start
+## Quick Start
 
-Complete setup first (see [Setup](#setup)), then verify each component in order before flying.
+AeroClean runs on a **Raspberry Pi**. You can interact with it over SSH from your laptop, or directly using the Raspberry Pi OS desktop with a monitor and keyboard attached.
 
-Once all hardware tests pass, start the mission:
+**Step 1 — Find your Pi's IP address**
 
+On the Pi itself (if you have a monitor attached once):
+```bash
+hostname -I
+# Example output: 192.168.1.42
+```
+Or check your router's connected devices list.
+
+**Step 2 — Connect from your laptop**
+
+Open a terminal on your laptop and SSH in:
+```bash
+ssh pi@<PI_IP>
+# Example: ssh pi@192.168.1.42
+```
+You are now running commands on the Pi remotely.
+
+> **First time here?** You must complete the [Setup](#setup) steps below before running anything. Do not skip ahead.
+
+**Step 3 — Activate the environment (every session)**
+
+Every time you open a new SSH session, activate the Python environment before running anything:
+```bash
+cd ~/AeroClean
+source aeroclean_env/bin/activate
+```
+Your prompt will change to show `(aeroclean_env)` at the start — that means it's active:
+```
+(aeroclean_env) pi@raspberrypi:~/AeroClean$
+```
+If you don't see `(aeroclean_env)`, run the activate command again before continuing.
+
+**Step 4 — Start the mission**
+
+Once all hardware tests pass (see [Setup → Step 4](#4-map-configjson-and-verify-each-hardware-component)):
 ```bash
 python main.py --mode mission
 ```
-
 The drone arms, takes off to 1.5 m, yaw-spins to scan for a dirty board, approaches it using camera centering and the range sensor, activates the pump to clean, then returns home and lands. All parameters are in `config.json`.
 
 ---
@@ -126,9 +159,11 @@ Gather everything before starting setup.
 
 ## Setup
 
+Work through these steps in order. Each step builds on the last — do not skip ahead.
+
 ### 1. Flash and configure the Pi
 
-Download **Raspberry Pi OS Bookworm (64-bit)** from the official site and flash it with Raspberry Pi Imager. Enable SSH and set your hostname if needed.
+Download **Raspberry Pi OS Bookworm (64-bit)** from the official site and flash it with Raspberry Pi Imager. Enable SSH and set your hostname if needed. Once flashed, boot the Pi and SSH in from your laptop (see [Quick Start](#quick-start) above).
 
 ### 2. Install dependencies, clone the repo, and set up the Python environment
 
@@ -136,51 +171,77 @@ Complete all four sub-steps in order. The Python packages must go inside the vir
 
 #### 2a — Update and install system packages
 
+This downloads and installs the camera library, OCR engine, and I2C diagnostic tools. It will take a few minutes.
+
 ```bash
 sudo apt update && sudo apt upgrade -y
 sudo apt install -y python3-picamera2 tesseract-ocr libcap-dev i2c-tools
 ```
 
-Verify the camera is detected before continuing:
+Then verify the camera is detected:
 ```bash
 libcamera-hello --list-cameras
-# Expected: "Available cameras" showing IMX708
+# Expected output contains: IMX708
 ```
+
+> ✓ **Before continuing:** you should see `IMX708` in the output above. If the camera is not listed, check the CSI ribbon cable connection and try again.
 
 #### 2b — Clone the repository
 
+This downloads the AeroClean code onto your Pi.
+
 ```bash
-git clone https://github.com/<your-username>/AeroClean.git
+git clone https://github.com/s4r131/AeroClean.git
 cd AeroClean
 ```
 
+Verify the files are there:
+```bash
+ls
+# Expected: you should see main.py, config.json, requirements.txt, etc.
+```
+
+> ✓ **Before continuing:** confirm `main.py` and `config.json` appear in the output above.
+
 #### 2c — Create and activate the virtual environment
+
+A virtual environment is an isolated Python workspace. It keeps AeroClean's packages separate from the rest of the Pi — this prevents version conflicts and makes the project self-contained.
 
 ```bash
 python -m venv aeroclean_env
 source aeroclean_env/bin/activate
 ```
 
-Your prompt will show `(aeroclean_env)` when the environment is active. **All pip installs, test scripts, and mission runs must be done inside this environment.**
-
-To reactivate in a new terminal session:
-```bash
-source aeroclean_env/bin/activate
+Your prompt will change — look for `(aeroclean_env)` at the start:
 ```
+# Before:
+pi@raspberrypi:~/AeroClean$
+
+# After (expected):
+(aeroclean_env) pi@raspberrypi:~/AeroClean$
+```
+
+> ✓ **Before continuing:** confirm your prompt shows `(aeroclean_env)`. If it doesn't, run `source aeroclean_env/bin/activate` again.
+
+**Important:** every time you open a new SSH session, you must run `source aeroclean_env/bin/activate` again before running any scripts. The environment does not stay active between sessions.
 
 #### 2d — Install Python dependencies
 
-With the environment active:
+With the environment active, install all required Python packages:
 
 ```bash
 pip install -r requirements.txt
 ```
 
-`dronekit`, `pymavlink`, and the Adafruit sensor libraries are already in `requirements.txt` — do not install them again separately.
+This installs everything the project needs — DroneKit, pymavlink, Ultralytics YOLO, the Adafruit sensor libraries, and more. It will take a few minutes the first time.
+
+> ✓ **Before continuing:** the install should finish without any `ERROR` lines. Warnings are fine.
 
 ### 3. Enable hardware interfaces (UART and I2C)
 
-All hardware interfaces on Pi 5 are activated by editing `/boot/firmware/config.txt` and rebooting. Use `pinctrl -p` after each reboot to verify that the change took effect.
+The Pi's UART and I2C ports are **off by default**. These steps turn them on by editing a config file and rebooting. Without this, the sensors and flight controller will not be detected at all.
+
+All changes go in `/boot/firmware/config.txt`. After each change, reboot and use `pinctrl -p` to confirm it worked — this command shows the live state of every GPIO pin on the 40-pin header.
 
 ---
 
@@ -293,7 +354,7 @@ After (expected):
 10: a4 pu | hi // GPIO15 = RXD0
 ```
 
-`GPIO14 = TXD0` and `GPIO15 = RXD0` confirm UART0 is live. If you still see `= none`, the line was not saved correctly — open `config.txt` again and confirm `enable_uart=1` is present and not commented out.
+> ✓ **Before continuing:** confirm `GPIO14 = TXD0` and `GPIO15 = RXD0` in your `pinctrl -p` output. If you still see `= none`, the line was not saved correctly — open `config.txt` again and confirm `enable_uart=1` is present and not commented out.
 
 ---
 
@@ -334,6 +395,8 @@ sudo i2cdetect -y 1
 ```
 Expected: `29` appears at address `0x29` in the grid. If the grid is all dashes, check the VIN/GND/SDA/SCL wiring.
 
+> ✓ **Before continuing:** confirm `29` appears in the `i2cdetect` grid above.
+
 ---
 
 ##### Sub-step 2B — Enable additional UART (sensor B: TF-Luna / TFMini)
@@ -358,6 +421,8 @@ Run `pinctrl -p` and confirm the new UART pins changed from `none` to an alterna
 ls -l /dev/ttyAMA*
 ```
 Note this path — it goes into `config.json → tf_sensor.uart`.
+
+> ✓ **Before continuing:** confirm the new UART device appears in `ls -l /dev/ttyAMA*` and note the path.
 
 ---
 
@@ -388,7 +453,7 @@ After (expected):
 24: a2 pn | hi // GPIO8  = TXD3
 ```
 
-`GPIO8 = TXD3` and `GPIO9 = RXD3` confirm UART3 is active.
+> ✓ **Before continuing:** confirm `GPIO8 = TXD3` and `GPIO9 = RXD3` in your `pinctrl -p` output.
 
 ---
 
@@ -405,6 +470,8 @@ Log out and back in (or reboot) for the group change to take effect. Verify:
 groups
 # Expected output includes: dialout
 ```
+
+> ✓ **Before continuing:** confirm `dialout` appears in the `groups` output above.
 
 ---
 
@@ -453,6 +520,8 @@ Once you've confirmed which `ttyAMAx` corresponds to each UART, update `config.j
 ---
 
 ### 4. Map config.json and verify each hardware component
+
+Now that you know which `/dev/ttyAMAx` path belongs to each UART (from Step 3), you need to enter those values into `config.json`. **The mission will not start until these are filled in** — it will print a clear error if any required value is still `null`.
 
 **Do this before attempting a mission.** Every interface you enabled in Step 3 must be mapped in `config.json` and confirmed working with its test script.
 
@@ -690,7 +759,7 @@ Press `q` to quit any live window.
 |---|---|---|---|
 | `--mode` | both | `inference` | `inference` (vision only) or `mission` (full drone flight) |
 | `--config` | both | `config.json` | Path to a different config file |
-| `--model` | inference only | *(required)* | `ocr` or `yolo` |
+| `--model` | inference only | `ocr` | `ocr` (default) or `yolo` |
 | `--source` | inference only | Pi camera | Path to image or video for offline testing |
 | `--once` | inference only | off | Process one frame then exit |
 | `--conf` | inference only | from config.json | YOLO confidence threshold override |
