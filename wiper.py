@@ -1,97 +1,94 @@
-"""
-wiper.py — Wiper arm controller for AeroClean.
+"""wiper.py — simple GPIO on/off controller for AeroClean (gpiozero, Pi 5 safe).
 
-TODO: Actuator type not yet decided. This is a placeholder skeleton.
-      Implement extend(), sweep(), and retract() once the mechanism
-      and control interface are confirmed.
+Treats the wiper like a relay or motor enable:
+turn ON → wait → turn OFF.
 
-The mission state machine calls wipe() during the CLEAN state:
-    wiper.wipe()   # extend → sweep → retract
-
-Usage:
-    wiper = Wiper.from_config("config.json")
-    wiper.wipe()
-    wiper.cleanup()
+Duration is configurable via config.json.
 """
 
 from __future__ import annotations
 
 import json
+import time
+
+try:
+    from gpiozero import LED
+    GPIOZERO_AVAILABLE = True
+except Exception:
+    LED = None
+    GPIOZERO_AVAILABLE = False
 
 
 class Wiper:
     """
-    Wiper arm placeholder.
+    Simple on/off wiper controller using gpiozero.
 
-    Public API is fixed — mission.py calls wipe(), which runs the full
-    extend → sweep → retract sequence. Fill in the implementation once
-    the actuator type and wiring are confirmed.
+    Safe no-op on systems without GPIO support.
     """
 
-    def __init__(
-        self,
-        pin: int | None,
-        home_angle: float    = 90.0,
-        press_angle: float   = 45.0,
-        sweep_left: float    = 30.0,
-        sweep_right: float   = 150.0,
-        sweep_passes: int    = 2,
-        sweep_speed: float   = 0.01,
-    ):
-        self._pin          = pin
-        self._home_angle   = home_angle
-        self._press_angle  = press_angle
-        self._sweep_left   = sweep_left
-        self._sweep_right  = sweep_right
-        self._sweep_passes = sweep_passes
-        self._sweep_speed  = sweep_speed
+    def __init__(self, pin: int | None, wipe_duration_s: float = 2.0):
+        self._pin = pin
+        self._device = None
+        self._available = False
+        self._wipe_duration = float(wipe_duration_s)
 
         if pin is None:
-            print("[WIPER] GPIO pin not yet assigned — running as no-op. Set 'wiper_gpio_pin' in config.json.")
-        else:
-            print(f"[WIPER] Wiper initialised on pin {pin} — actuator implementation TBD.")
+            print("[WIPER] GPIO pin not set — running as no-op. Set 'wiper_gpio_pin' in config.json.")
+            return
+
+        if not GPIOZERO_AVAILABLE:
+            print(f"[WIPER] gpiozero not available — Wiper(pin={pin}) running as no-op.")
+            return
+
+        try:
+            self._device = LED(pin)
+            self._device.off()
+            self._available = True
+            print(f"[WIPER] Initialized on pin {pin} (gpiozero)")
+        except Exception as e:
+            self._device = None
+            self._available = False
+            print(f"[WIPER] GPIO init failed on pin {pin} — running as no-op: {e}")
 
     @classmethod
     def from_config(cls, config_path: str = "config.json") -> "Wiper":
-        """Construct a Wiper from the 'wiper' block in config.json."""
-        with open(config_path) as f:
+        """Construct a Wiper from config.json."""
+        with open(config_path, "r") as f:
             cfg = json.load(f)
+
         w = cfg.get("wiper", {})
+
         return cls(
-            pin          = w.get("wiper_gpio_pin"),
-            home_angle   = float(w.get("home_angle",   90.0)),
-            press_angle  = float(w.get("press_angle",  45.0)),
-            sweep_left   = float(w.get("sweep_left",   30.0)),
-            sweep_right  = float(w.get("sweep_right",  150.0)),
-            sweep_passes = int(w.get("sweep_passes",   2)),
-            sweep_speed  = float(w.get("sweep_speed",  0.01)),
+            pin=w.get("wiper_gpio_pin"),
+            wipe_duration_s=float(w.get("wipe_duration_s", 2.0)),
         )
 
-    # ─────────────────────────────────────────────────────────────────────────
-    # Public API
-    # ─────────────────────────────────────────────────────────────────────────
+    def on(self) -> None:
+        """Turn the wiper ON."""
+        print(f"[WIPER] ON (pin {self._pin})")
+        if self._available and self._device is not None:
+            self._device.on()
 
-    def wipe(self) -> None:
-        """Full cleaning sequence: extend → sweep → retract."""
-        print("[WIPER] Starting wipe sequence")
-        self.extend()
-        self.sweep()
-        self.retract()
-        print("[WIPER] Wipe complete")
+    def off(self) -> None:
+        """Turn the wiper OFF."""
+        if self._available and self._device is not None:
+            self._device.off()
+        print(f"[WIPER] OFF (pin {self._pin})")
 
-    def extend(self) -> None:
-        """Press the wipe against the board surface. TODO: implement."""
-        print("[WIPER] extend() — not yet implemented")
-
-    def sweep(self) -> None:
-        """Sweep the wipe across the board. TODO: implement."""
-        print("[WIPER] sweep() — not yet implemented")
-
-    def retract(self) -> None:
-        """Return the arm to the home position. TODO: implement."""
-        print("[WIPER] retract() — not yet implemented")
+    def wipe(self, duration_sec: float | None = None) -> None:
+        """Run the wiper for configured duration (or override)."""
+        duration = duration_sec if duration_sec is not None else self._wipe_duration
+        print(f"[WIPER] Wiping for {duration:.1f}s on pin {self._pin}")
+        self.on()
+        time.sleep(duration)
+        self.off()
 
     def cleanup(self) -> None:
-        """Release any hardware resources. TODO: implement."""
-        self.retract()
+        """Release GPIO resources."""
+        self.off()
+        if self._device is not None:
+            try:
+                self._device.close()
+            except Exception:
+                pass
         print("[WIPER] cleanup done")

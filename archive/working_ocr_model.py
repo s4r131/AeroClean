@@ -6,7 +6,6 @@ from __future__ import annotations
 
 import json
 import re
-import time
 import cv2
 import numpy as np
 
@@ -63,6 +62,7 @@ def _preprocess(frame: np.ndarray) -> np.ndarray:
     return cleaned
 
 
+
 def _crop_roi(frame: np.ndarray, roi: list | None) -> np.ndarray:
     if roi is None:
         return frame
@@ -94,6 +94,7 @@ def _run_ocr(processed: np.ndarray) -> dict:
 
 def _find_dirty(ocr_data: dict) -> list[dict]:
     matches = []
+    # print(ocr_data["text"]) # debugging use only
     for i, word in enumerate(ocr_data["text"]):
         if _DIRTY_PATTERN.search(word):
             matches.append({
@@ -108,7 +109,7 @@ def _find_dirty(ocr_data: dict) -> list[dict]:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Overlay (NO status text here anymore)
+# Overlay (FIXED scaling)
 # ─────────────────────────────────────────────────────────────────────────────
 
 def _draw_overlay(frame: np.ndarray, matches: list[dict],
@@ -119,6 +120,7 @@ def _draw_overlay(frame: np.ndarray, matches: list[dict],
     ox, oy = roi_offset
 
     for m in matches:
+        # scale coordinates back to original frame
         x1 = ox + int(m["left"] / scale)
         y1 = oy + int(m["top"] / scale)
         x2 = x1 + int(m["width"] / scale)
@@ -126,15 +128,19 @@ def _draw_overlay(frame: np.ndarray, matches: list[dict],
 
         cv2.rectangle(out, (x1, y1), (x2, y2), (0, 0, 255), 2)
         label = f"{m['text']} ({m['conf']}%)"
-        cv2.putText(
-            out,
-            label,
-            (x1, y1 - 8),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            0.6,
-            (0, 0, 255),
-            2,
-        )
+        cv2.putText(out, label, (x1, y1 - 8),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
+
+    #if matches:
+     #   banner_text = "DIRTY DETECTED"
+       # banner_color = (0, 0, 255)
+    #else:
+     #   banner_text = "CLEAN"
+      #  banner_color = (0, 200, 0)
+
+   # cv2.rectangle(out, (0, 0), (300, 40), (0, 0, 0), -1)
+   # cv2.putText(out, banner_text, (10, 28),
+    #            cv2.FONT_HERSHEY_SIMPLEX, 0.9, banner_color, 2)
 
     return out
 
@@ -150,12 +156,8 @@ class OCRModel:
 
         self._frame_count = 0
         self._last_result = False
-        self._last_matches = []
+        self._last_matches = []   # so boxes persist
         self._last_scale = 1.0
-
-        # 🔥 NEW: hold dirty state
-        self._dirty_hold_s = 1.5
-        self._last_dirty_time = 0.0
 
     def run(self, frame: np.ndarray) -> tuple[bool, np.ndarray]:
         self._frame_count += 1
@@ -166,48 +168,29 @@ class OCRModel:
         if self._roi is not None:
             roi_offset = (self._roi[0], self._roi[1])
 
-        now = time.time()
-
         # ── Skip OCR most frames
         if self._frame_count % 5 != 0:
-            if self._last_matches and (now - self._last_dirty_time) <= self._dirty_hold_s:
-                annotated = _draw_overlay(
-                    frame,
-                    self._last_matches,
-                    roi_offset,
-                    self._last_scale
-                )
-                return True, annotated
+            annotated = _draw_overlay(
+                frame,
+                self._last_matches,
+                roi_offset,
+                self._last_scale
+            )
+            return self._last_result, annotated
 
-            annotated = _draw_overlay(frame, [], roi_offset, self._last_scale)
-            return False, annotated
-
-        # ── Run OCR
+        # ── Downscale
         cropped, scale = _resize(cropped)
+
         processed = _preprocess(cropped)
         ocr_data = _run_ocr(processed)
         matches = _find_dirty(ocr_data)
 
+        # store for skipped frames
+        self._last_matches = matches
         self._last_scale = scale
 
-        if matches:
-            self._last_matches = matches
-            self._last_dirty_time = now
-            dirty = True
-        else:
-            if (now - self._last_dirty_time) <= self._dirty_hold_s:
-                dirty = True
-            else:
-                self._last_matches = []
-                dirty = False
-
-        annotated = _draw_overlay(
-            frame,
-            self._last_matches if dirty else [],
-            roi_offset,
-            scale
-        )
-
+        annotated = _draw_overlay(frame, matches, roi_offset, scale)
+        dirty = len(matches) > 0
         self._last_result = dirty
 
         return dirty, annotated

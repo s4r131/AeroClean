@@ -6,7 +6,7 @@
 #
 # picamera2 is NOT listed here because it must be installed via apt:
 #   sudo apt install python3-picamera2
-# See requirements_pi.txt for full Pi setup instructions.
+# See README.md Setup section for full Pi setup instructions.
 # ─────────────────────────────────────────────────────────────────────────────
 
 # Core computer vision
@@ -29,7 +29,15 @@ pymavlink>=2.4.41
 # RPi.GPIO is Pi-only — install manually on the Pi:
 #   pip install RPi.GPIO
 
-# VL53L3CX ToF range sensor (mission mode only)
+# VL53L3CX ToF range sensor (sensor_ocr_test.py + mission mode)
 adafruit-circuitpython-vl53l4cd>=1.3.0
 adafruit-blinka>=8.0.0
-# Both packages require hardware I2C — gracefully no-op on non-Pi systems
+# Both packages require hardware I2C on the Pi — gracefully no-op on non-Pi systems
+# adafruit-blinka also depends on RPi.GPIO — install it on the Pi:
+#   pip install RPi.GPIO
+
+# TF-Luna / TFMini UART range sensor (sensor B — optional)
+# Required when range_sensor.type = "b" in config.json.
+# Used by sensors.py (TFRangeSensor), sensor_ocr_test.py, and sensor_tf_test.py.
+# Safe to omit on sensor A (VL53L3CX) builds — gracefully skipped at runtime.
+pyserial>=3.5
