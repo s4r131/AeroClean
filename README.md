@@ -20,9 +20,9 @@ This prints your Pi's IP address (e.g. `192.168.1.42`). Or check your router's c
 
 Open a terminal on your laptop and SSH in:
 ```bash
-ssh pi@<PI_IP>
+ssh user@<PI_IP>
 ```
-Replace `<PI_IP>` with your Pi's address (e.g. `192.168.1.42`). You are now running commands on the Pi remotely.
+Replace `user` with your Pi's username and `<PI_IP>` with your Pi's address (e.g. `192.168.1.42`). You are now running commands on the Pi remotely.
 
 > **First time here?** You must complete the [Setup](#setup) steps below before running anything. Do not skip ahead.
 
@@ -377,7 +377,7 @@ cd ~/AeroClean
 source aeroclean_env/bin/activate
 ```
 
-Run `pinctrl -p` and look for physical pins 8 and 10:
+Run `pinctrl -p` and look for physical pins 8 and 10 — confirm they have changed from `none` to their UART0 alternate functions:
 
 ```
 Before:
@@ -389,8 +389,13 @@ After (expected):
  9: gnd
 10: a4 pu | hi // GPIO15 = RXD0
 ```
+Then confirm the device is present:
 
-> ✓ **Before continuing:** confirm `GPIO14 = TXD0` and `GPIO15 = RXD0` in your `pinctrl -p` output. If you still see `= none`, the line was not saved correctly — open `config.txt` again and confirm `enable_uart=1` is present and not commented out.
+```bash
+ls -l /dev/ttyAMA*
+```
+
+Note the path for the ArduPilot FC sensor — it goes into `config.json → mission.mavlink_uart` (section `_s8`).
 
 ---
 
@@ -432,9 +437,9 @@ Then list all available UARTs:
 ```bash
 ls -l /dev/ttyAMA*
 ```
-`dtoverlay=uartX` creates `/dev/ttyAMAX` with the same number — e.g. `dtoverlay=uart3` → `/dev/ttyAMA3`. Note the path for the TF sensor — it goes into `config.json → tf_sensor.uart` (section `_s6`).
+`dtoverlay=uartX` creates a new `/dev/ttyAMAX` device. Note the path for the TF sensor — it goes into `config.json → tf_sensor.uart` (section `_s6`).
 
-**Debug check — confirm raw bytes are arriving before running any scripts:**
+**Debug check — confirm the sensor is live and transmitting:**
 
 ```bash
 cat /dev/ttyAMAX   # replace X with your TF sensor UART number, e.g. cat /dev/ttyAMA3
@@ -526,73 +531,9 @@ dtparam=i2c_arm=on
 ```
 No overlay UART needed — the VL53L3CX uses I2C. Add `dtoverlay=uartX` lines for any additional serial peripherals.
 
----
-
-#### Find your device paths, then update config.json
-
-List all available UART devices:
-
-```bash
-ls -l /dev/ttyAMA*
-```
-Example output:
-```
-/dev/ttyAMA0
-/dev/ttyAMA3
-```
-The number matches your `dtoverlay` line — `dtoverlay=uart3` creates `/dev/ttyAMA3`. Use these paths directly in `config.json`.
-
-Once you know which path belongs to each device, open `config.json`:
-```bash
-sudo nano config.json
-```
-Find the `_s8` section (Mission) and fill in the MAVLink UART path, then save and exit: press `Ctrl+X` → `Y` → `Enter`.
-```json
-"mavlink_uart": "/dev/ttyAMA0"
-```
-Replace the number with the path for the ArduPilot FC. **Values must stay inside double quotes** — e.g. `"/dev/ttyAMA0"`, not `/dev/ttyAMA0`.
-
----
-
 ### 4. Configure config.json
 
 Now that you know which `/dev/ttyAMAX` path belongs to each UART (from Step 3), enter those values into `config.json`. **The mission will not start until these are filled in** — it will print a clear error if any required value is still `null`.
-
-#### 4a — Fill in config.json
-
-First list all UART devices:
-```bash
-ls -l /dev/ttyAMA*
-```
-Sensor B (VL53L3CX) only — confirm the I2C sensor is visible:
-```bash
-sudo i2cdetect -y 1
-```
-
-Open `config.json`:
-```bash
-sudo nano config.json
-```
-Find the `_s8` section (Mission) and fill in the MAVLink UART path, then save and exit: press `Ctrl+X` → `Y` → `Enter`.
-```json
-"mavlink_uart": "/dev/ttyAMA0"
-```
-Replace the number with the path for the ArduPilot FC from `ls -l /dev/ttyAMA*`. **Values must stay inside double quotes** — e.g. `"/dev/ttyAMA0"`, not `/dev/ttyAMA0`.
-
-Find the `_s5` section (Range sensor) and set your sensor type. Default is `"a"` (TF-Luna/TFMini). Change to `"b"` if using VL53L3CX:
-```json
-"type": "a"
-```
-If using sensor A (TF-Luna, default), find the `_s6` section (TF-Luna / TFMini) and set:
-```json
-"uart": "/dev/ttyAMA3"
-```
-Replace the number with the path for the TF sensor from `ls -l /dev/ttyAMA*`. The number matches your `dtoverlay=uartX` line (e.g. `dtoverlay=uart3` → `/dev/ttyAMA3`). **The value must stay inside double quotes** — e.g. `"/dev/ttyAMA3"`. If using sensor B (VL53L3CX), `i2c_address` in `_s5` only needs changing if the sensor was remapped from `0x29`.
-
-If running without a monitor:
-```json
-"display": false
-```
 
 ### 5. Test each hardware component
 
@@ -612,7 +553,7 @@ Expected: live window opens, terminal prints resolution and FPS every second.
 
 ---
 
-#### 5b — OCR and YOLO inference
+#### 5b — OCR AND/OR YOLO inference
 
 Confirm the vision models run on camera frames. No sensors, no drone. Run one or both:
 
@@ -746,31 +687,9 @@ Use this after completing all setup steps to confirm nothing was missed before a
 
 ### config.json
 
-Set these `null` values before running mission mode. Run `ls -l /dev/ttyAMA*` to list all UARTs — the number matches your `dtoverlay=uartX` line (e.g. `dtoverlay=uart3` → `/dev/ttyAMA3`). Do not copy the placeholders below verbatim:
+Verify that no `null` values remain before running mission mode.
 
-```json
-"mission": {
-  "mavlink_uart": "<your /dev/ttyAMAX for ArduPilot FC>",
-  "pump_gpio_pin": <BCM pin number for pump relay IN>
-},
-"range_sensor": {
-  "type": "a"
-},
-"wiper": {
-  "wiper_gpio_pin": <BCM pin number for wiper arm>
-}
-```
-
-Set `range_sensor.type` to `"a"` for TF-Luna/TFMini (UART, default) or `"b"` for VL53L3CX (I2C).
-
-If using sensor A (TF-Luna, default), also set:
-```json
-"tf_sensor": {
-  "uart": "<your /dev/ttyAMAX for TF sensor>"
-}
-```
-
-If running headless (no monitor), also set `"display": false` — OpenCV will crash on a headless Pi if this is left `true`.
+If running headless (no monitor), also set `"display": false` (section `_s4`) — OpenCV will crash on a headless Pi if this is left `true`.
 
 ---
 
@@ -859,6 +778,8 @@ Any exception → ABORTED (safe shutdown + RTL attempted)
 | **CLEAN** | Holds position; activates pump for `pump_duration_s` seconds, then actuates the wiper arm sweep |
 | **RETURN** | Switches ArduPilot to RTL mode; waits for landing |
 | **DONE / ABORTED** | Terminal states — subsystems shut down cleanly |
+
+---
 
 ## Reference
 

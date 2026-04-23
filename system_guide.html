@@ -261,8 +261,8 @@ select:focus,input[type=number]:focus{outline:none;border-color:#3b82f6;box-shad
 
   <div class="grid-4 ai" style="margin-bottom:14px">
     <div class="stat"><div class="stat-v" style="background:linear-gradient(135deg,#2563eb,#7c3aed);-webkit-background-clip:text;-webkit-text-fill-color:transparent">2</div><div class="stat-l">Vision Models</div></div>
-    <div class="stat"><div class="stat-v" style="background:linear-gradient(135deg,#10b981,#059669);-webkit-background-clip:text;-webkit-text-fill-color:transparent">5</div><div class="stat-l">Mission States</div></div>
-    <div class="stat"><div class="stat-v" style="background:linear-gradient(135deg,#f59e0b,#d97706);-webkit-background-clip:text;-webkit-text-fill-color:transparent">3</div><div class="stat-l">UARTs Used</div></div>
+    <div class="stat"><div class="stat-v" style="background:linear-gradient(135deg,#10b981,#059669);-webkit-background-clip:text;-webkit-text-fill-color:transparent">6</div><div class="stat-l">Mission States</div></div>
+    <div class="stat"><div class="stat-v" style="background:linear-gradient(135deg,#f59e0b,#d97706);-webkit-background-clip:text;-webkit-text-fill-color:transparent">2</div><div class="stat-l">UARTs Used</div></div>
     <div class="stat"><div class="stat-v" style="background:linear-gradient(135deg,#ef4444,#dc2626);-webkit-background-clip:text;-webkit-text-fill-color:transparent">~80ms</div><div class="stat-l">YOLO Latency</div></div>
   </div>
 
@@ -390,8 +390,8 @@ python main.py --mode mission</pre>
 
       <h3>UART count by config</h3>
       <div style="display:flex;flex-direction:column;gap:6px;font-size:13px">
-        <div class="card" style="padding:10px 14px"><span class="sa">Sensor A</span> <span style="color:#374151;margin-left:8px">3 UARTs — FC + MTF-02P + TF-Luna/TFMini (default)</span></div>
-        <div class="card" style="padding:10px 14px"><span class="sb">Sensor B</span> <span style="color:#374151;margin-left:8px">2 UARTs — FC + MTF-02P (VL53L3CX uses I2C)</span></div>
+        <div class="card" style="padding:10px 14px"><span class="sa">Sensor A</span> <span style="color:#374151;margin-left:8px">2 UARTs — FC + TF-Luna/TFMini (default)</span></div>
+        <div class="card" style="padding:10px 14px"><span class="sb">Sensor B</span> <span style="color:#374151;margin-left:8px">1 UART — FC only (VL53L3CX uses I2C)</span></div>
       </div>
     </div>
   </div>
@@ -408,8 +408,7 @@ python main.py --mode mission</pre>
       <div class="code-block">
         <div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="cc(this)">Copy</button></div>
         <pre>sudo apt update && sudo apt upgrade -y
-sudo apt install -y python3-picamera2 \
-  tesseract-ocr libcap-dev i2c-tools</pre>
+sudo apt install -y tesseract-ocr libcap-dev i2c-tools</pre>
       </div>
       <div class="code-block">
         <div class="code-header"><span class="code-lang">bash — verify camera</span><button class="copy-btn" onclick="cc(this)">Copy</button></div>
@@ -420,7 +419,7 @@ sudo apt install -y python3-picamera2 \
       <h3>Step 2 — Clone &amp; venv</h3>
       <div class="code-block">
         <div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="cc(this)">Copy</button></div>
-        <pre>git clone https://github.com/&lt;your-username&gt;/AeroClean.git
+        <pre>git clone https://github.com/s4r131/AeroClean.git
 cd AeroClean
 python -m venv aeroclean_env
 source aeroclean_env/bin/activate
@@ -454,8 +453,7 @@ sudo reboot</pre>
         <div class="code-block">
           <div class="code-header"><span class="code-lang">/boot/firmware/config.txt</span><button class="copy-btn" onclick="cc(this)">Copy</button></div>
           <pre>enable_uart=1         <span class="cm"># UART0 — ArduPilot FC</span>
-dtoverlay=uart3       <span class="cm"># UART3 — MTF-02P optical flow</span>
-dtoverlay=uart4       <span class="cm"># UART4 — TF-Luna/TFMini</span></pre>
+dtoverlay=uartX       <span class="cm"># any free overlay UART — TF-Luna/TFMini</span></pre>
         </div>
         <p style="font-size:12.5px;color:#475569">Use any free overlay UARTs. Verify pins with <code>pinctrl -p</code> after reboot. Run <code>pinout</code> to match GPIO numbers to physical pin positions on the header.</p>
       </div>
@@ -463,7 +461,6 @@ dtoverlay=uart4       <span class="cm"># UART4 — TF-Luna/TFMini</span></pre>
         <div class="code-block">
           <div class="code-header"><span class="code-lang">/boot/firmware/config.txt</span><button class="copy-btn" onclick="cc(this)">Copy</button></div>
           <pre>enable_uart=1         <span class="cm"># UART0 — ArduPilot FC</span>
-dtoverlay=uart3       <span class="cm"># UART3 — MTF-02P optical flow</span>
 dtparam=i2c_arm=on    <span class="cm"># I2C — VL53L3CX</span></pre>
         </div>
         <p style="font-size:12.5px;color:#475569">After reboot verify: <code>sudo i2cdetect -y 1</code> → expect <code>0x29</code></p>
@@ -506,12 +503,13 @@ groups   <span class="cm"># expected output includes: dialout</span></pre>
     <div>
       <h3 style="margin-top:0">Software</h3>
       <div id="chk-list">
-        <div class="cl-item" onclick="toggleChk(this)"><div class="cl-box">✓</div><span>System packages installed: <code>python3-picamera2 tesseract-ocr libcap-dev i2c-tools</code></span></div>
+        <div class="cl-item" onclick="toggleChk(this)"><div class="cl-box">✓</div><span>System packages installed: <code>tesseract-ocr libcap-dev i2c-tools</code></span></div>
+        <div class="cl-item" onclick="toggleChk(this)"><div class="cl-box">✓</div><span>IMX708 camera enabled in <code>/boot/firmware/config.txt</code> (<code>camera_auto_detect=0</code>, <code>dtoverlay=imx708</code>) and <code>libcamera-hello --list-cameras</code> shows <code>IMX708</code></span></div>
         <div class="cl-item" onclick="toggleChk(this)"><div class="cl-box">✓</div><span>Virtual environment created and active (<code>source aeroclean_env/bin/activate</code>)</span></div>
         <div class="cl-item" onclick="toggleChk(this)"><div class="cl-box">✓</div><span>Python packages installed inside venv: <code>pip install -r requirements.txt</code></span></div>
         <div class="cl-item" onclick="toggleChk(this)"><div class="cl-box">✓</div><span>Serial login shell disabled — <code>console=serial0,115200</code> removed from <code>cmdline.txt</code> and getty service stopped</span></div>
         <div class="cl-item" onclick="toggleChk(this)"><div class="cl-box">✓</div><span><code>enable_uart=1</code> and <code>dtoverlay=uartX</code> in <code>/boot/firmware/config.txt</code></span></div>
-        <div class="cl-item" onclick="toggleChk(this)"><div class="cl-box">✓</div><span><code>dtparam=i2c_arm=on</code> in <code>config.txt</code> <strong>(sensor A only)</strong></span></div>
+        <div class="cl-item" onclick="toggleChk(this)"><div class="cl-box">✓</div><span><code>dtparam=i2c_arm=on</code> in <code>/boot/firmware/config.txt</code> <strong>(sensor B only — VL53L3CX)</strong></span></div>
         <div class="cl-item" onclick="toggleChk(this)"><div class="cl-box">✓</div><span>User in <code>dialout</code> group</span></div>
         <div class="cl-item" onclick="toggleChk(this)"><div class="cl-box">✓</div><span>YOLO weights trained and placed in <code>weights/best_ncnn_model/</code></span></div>
       </div>
@@ -550,7 +548,7 @@ python main.py --model yolo</pre></div>
           <div style="font-size:12px;color:#64748b;margin-top:5px">Expected: <code>0.452 m  (45.2 cm)</code></div>
         </div>
         <div class="card" style="padding:11px 14px">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px"><strong style="font-size:13px">Step 5 — Range + OCR together</strong></div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px"><strong style="font-size:13px">Step 4 — Range + OCR together</strong></div>
           <div class="code-block" style="margin:0"><div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="cc(this)">Copy</button></div><pre><span class="cm"># Sensor A (default):</span>  python sensor_ocr_test.py
 <span class="cm"># Sensor B:</span>           python sensor_ocr_test.py --sensor b</pre></div>
         </div>
@@ -1082,11 +1080,9 @@ Camera → BGR frame
         <div class="code-header"><span class="code-lang">/boot/firmware/config.txt</span></div>
         <pre><span class="cm"># UART0 — ArduPilot FC (always required)</span>
 enable_uart=1
-<span class="cm"># MTF-02P optical flow (always required)</span>
-dtoverlay=uart3   <span class="cm"># any free overlay UART</span>
 
 <span class="cm"># Sensor A — TF-Luna/TFMini (UART, default)</span>
-dtoverlay=uart4   <span class="cm"># any free overlay UART</span>
+dtoverlay=uartX   <span class="cm"># any free overlay UART</span>
 
 <span class="cm"># Sensor B — VL53L3CX (I2C, alternative to Sensor A)</span>
 dtparam=i2c_arm=on   <span class="cm"># instead of dtoverlay</span></pre>
@@ -1097,7 +1093,7 @@ dtparam=i2c_arm=on   <span class="cm"># instead of dtoverlay</span></pre>
         <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
         <tbody>
           <tr><td><code>--mode</code></td><td><code>inference</code></td><td><code>inference</code> or <code>mission</code></td></tr>
-          <tr><td><code>--model</code></td><td>required</td><td><code>ocr</code> or <code>yolo</code> (inference only)</td></tr>
+          <tr><td><code>--model</code></td><td><code>ocr</code></td><td><code>ocr</code> (default) or <code>yolo</code> (inference only)</td></tr>
           <tr><td><code>--config</code></td><td><code>config.json</code></td><td>Path to alternate config file</td></tr>
           <tr><td><code>--source</code></td><td>Pi camera</td><td>Image or video for offline testing</td></tr>
           <tr><td><code>--once</code></td><td>off</td><td>Process one frame then exit</td></tr>
