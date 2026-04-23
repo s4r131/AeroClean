@@ -371,7 +371,7 @@ python main.py --mode mission</pre>
 │  GPIO pump pin         →  pump relay    │
 │  GPIO wiper pin        →  wiper arm     │
 │                                         │
-│  pymavlink (MAVLink over UART)           │
+│  pymavlink (MAVLink over UART)          │
 └──────────────┬──────────────────────────┘</span>
                │ <span class="ua">UART — MAVLink</span>
 <span class="fc">┌──────────────▼──────────────────────────┐
@@ -400,73 +400,103 @@ python main.py --mode mission</pre>
 <!-- ── Screen 2: Setup ────────────────────────────────────────────── -->
 <div class="screen" data-screen="2">
   <h1 class="ai">Setup <span class="accent">Guide</span></h1>
-  <p class="ai" style="margin-bottom:14px">Complete all steps in order. Do not run <code>pip install</code> outside the virtual environment.</p>
+  <p class="ai" style="margin-bottom:14px">Complete all steps in order. Each step builds on the last — do not skip ahead.</p>
 
   <div class="grid-2 ai" style="max-width:900px;align-items:start;gap:16px">
     <div>
-      <h3 style="margin-top:0">Step 1 — System packages</h3>
+      <h3 style="margin-top:0">Step 1 — Update &amp; install system packages</h3>
       <div class="code-block">
         <div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="cc(this)">Copy</button></div>
         <pre>sudo apt update && sudo apt upgrade -y
 sudo apt install -y tesseract-ocr libcap-dev i2c-tools</pre>
       </div>
-      <div class="code-block">
-        <div class="code-header"><span class="code-lang">bash — verify camera</span><button class="copy-btn" onclick="cc(this)">Copy</button></div>
-        <pre>libcamera-hello --list-cameras
-<span class="cm"># Expected: Available cameras → IMX708</span></pre>
+      <div class="callout tip" style="margin-top:6px">
+        <span class="icon">✓</span>
+        <div>Install should finish without any <code>ERROR</code> lines before continuing.</div>
       </div>
 
-      <h3>Step 2 — Clone &amp; venv</h3>
+      <h3>Step 2 — Clone repo &amp; set up virtual environment</h3>
       <div class="code-block">
         <div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="cc(this)">Copy</button></div>
         <pre>git clone https://github.com/s4r131/AeroClean.git
 cd AeroClean
-python -m venv aeroclean_env
+python3 -m venv aeroclean_env
 source aeroclean_env/bin/activate
 pip install -r requirements.txt</pre>
       </div>
       <div class="callout warn">
         <span class="icon">⚠️</span>
-        <div>Reactivate with <code>source aeroclean_env/bin/activate</code> in every new terminal. All test scripts and mission runs must run inside the venv.</div>
+        <div>Reactivate with <code>source aeroclean_env/bin/activate</code> in every new terminal. Your prompt should show <code>(aeroclean_env)</code> before running anything.</div>
       </div>
 
-      <h3>Step 3 — Disable serial login shell</h3>
-      <p style="font-size:13px;color:#475569">Do this before enabling UART0. The Pi OS attaches a getty console to UART0 by default — it will fight with ArduPilot over the wire.</p>
+      <h3>Step 3 — Enable IMX708 camera</h3>
+      <p style="font-size:13px;color:#475569">Open <code>/boot/firmware/config.txt</code> and make these two changes:</p>
+      <div class="code-block">
+        <div class="code-header"><span class="code-lang">/boot/firmware/config.txt</span><button class="copy-btn" onclick="cc(this)">Copy</button></div>
+        <pre>camera_auto_detect=0
+dtoverlay=imx708
+<span class="cm"># If ribbon is in CAM0 (lower port): dtoverlay=imx708,cam0</span></pre>
+      </div>
+      <p style="font-size:12.5px;color:#475569">Save, reboot, then verify:</p>
       <div class="code-block">
         <div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="cc(this)">Copy</button></div>
-        <pre><span class="cm"># Remove console=serial0,115200 from this file:</span>
-sudo nano /boot/firmware/cmdline.txt
-
-sudo systemctl disable serial-getty@ttyAMA0.service
-sudo systemctl stop serial-getty@ttyAMA0.service
-sudo reboot</pre>
+        <pre>libcamera-hello --list-cameras
+<span class="cm"># Expected output contains: IMX708</span></pre>
+      </div>
+      <div class="callout tip" style="margin-top:6px">
+        <span class="icon">✓</span>
+        <div>Confirm <code>IMX708</code> appears before continuing. Run <code>pinout</code> to identify CAM0 vs CAM1 port positions.</div>
       </div>
     </div>
 
     <div>
-      <h3 style="margin-top:0">Step 4 — Enable interfaces in config.txt</h3>
+      <h3 style="margin-top:0">Step 4 — Enable UART0 (ArduPilot FC)</h3>
+      <p style="font-size:13px;color:#475569">Add to <code>/boot/firmware/config.txt</code>, save, then reboot:</p>
+      <div class="code-block">
+        <div class="code-header"><span class="code-lang">/boot/firmware/config.txt</span><button class="copy-btn" onclick="cc(this)">Copy</button></div>
+        <pre>enable_uart=1</pre>
+      </div>
+      <p style="font-size:12.5px;color:#475569">After reboot, run <code>pinctrl -p</code> and confirm pins 8 and 10 changed from <code>none</code> to <code>TXD0</code> / <code>RXD0</code>. Then list devices:</p>
+      <div class="code-block">
+        <div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="cc(this)">Copy</button></div>
+        <pre>ls -l /dev/ttyAMA*
+<span class="cm"># Note the FC path → goes in config.json: mission.mavlink_uart</span></pre>
+      </div>
+
+      <h3>Step 5 — Enable range sensor interface</h3>
       <div class="tab-bar">
         <button class="tab-btn active" onclick="switchTab(this,'sa')">Sensor A (UART)</button>
         <button class="tab-btn" onclick="switchTab(this,'sb')">Sensor B (I2C)</button>
       </div>
       <div id="sa" class="tab-panel active" style="margin-top:10px">
+        <p style="font-size:12.5px;color:#475569">Add a free overlay UART to <code>config.txt</code>, save, then reboot:</p>
         <div class="code-block">
           <div class="code-header"><span class="code-lang">/boot/firmware/config.txt</span><button class="copy-btn" onclick="cc(this)">Copy</button></div>
-          <pre>enable_uart=1         <span class="cm"># UART0 — ArduPilot FC</span>
-dtoverlay=uartX       <span class="cm"># any free overlay UART — TF-Luna/TFMini</span></pre>
+          <pre>dtoverlay=uartX   <span class="cm"># e.g. dtoverlay=uart4</span></pre>
         </div>
-        <p style="font-size:12.5px;color:#475569">Use any free overlay UARTs. Verify pins with <code>pinctrl -p</code> after reboot. Run <code>pinout</code> to match GPIO numbers to physical pin positions on the header.</p>
+        <p style="font-size:12.5px;color:#475569">After reboot, verify the new device and confirm the sensor is transmitting:</p>
+        <div class="code-block">
+          <div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="cc(this)">Copy</button></div>
+          <pre>ls -l /dev/ttyAMA*
+cat /dev/ttyAMAX   <span class="cm"># garbled binary = sensor is live. Ctrl+C to stop</span></pre>
+        </div>
+        <p style="font-size:12px;color:#64748b;margin-top:5px">Note the path → goes in <code>config.json → tf_sensor.uart</code>.</p>
       </div>
       <div id="sb" class="tab-panel" style="margin-top:10px">
+        <p style="font-size:12.5px;color:#475569">Add to <code>config.txt</code>, save, then reboot:</p>
         <div class="code-block">
           <div class="code-header"><span class="code-lang">/boot/firmware/config.txt</span><button class="copy-btn" onclick="cc(this)">Copy</button></div>
-          <pre>enable_uart=1         <span class="cm"># UART0 — ArduPilot FC</span>
-dtparam=i2c_arm=on    <span class="cm"># I2C — VL53L3CX</span></pre>
+          <pre>dtparam=i2c_arm=on</pre>
         </div>
-        <p style="font-size:12.5px;color:#475569">After reboot verify: <code>sudo i2cdetect -y 1</code> → expect <code>0x29</code></p>
+        <p style="font-size:12.5px;color:#475569">After reboot, verify the sensor is visible on the I2C bus:</p>
+        <div class="code-block">
+          <div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="cc(this)">Copy</button></div>
+          <pre>sudo i2cdetect -y 1
+<span class="cm"># Expected: 29 appears at address 0x29</span></pre>
+        </div>
       </div>
 
-      <h3 style="margin-top:14px">Step 5 — Dialout group</h3>
+      <h3 style="margin-top:14px">Step 6 — Dialout group</h3>
       <div class="code-block">
         <div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="cc(this)">Copy</button></div>
         <pre>sudo usermod -aG dialout $USER
@@ -474,21 +504,21 @@ dtparam=i2c_arm=on    <span class="cm"># I2C — VL53L3CX</span></pre>
 groups   <span class="cm"># expected output includes: dialout</span></pre>
       </div>
 
-      <h3>Step 6 — Find device paths, update config.json</h3>
-      <div class="code-block">
-        <div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="cc(this)">Copy</button></div>
-        <pre>ls -l /dev/ttyAMA*
-<span class="cm"># Cross-reference GPIO numbers: pinctrl -p   then   pinout</span></pre>
-      </div>
+      <h3>Step 7 — Configure config.json</h3>
+      <p style="font-size:13px;color:#475569">Enter the device paths noted in steps 4–5. The mission will not start until all <code>null</code> values are filled in.</p>
       <div class="code-block">
         <div class="code-header"><span class="code-lang">config.json</span><button class="copy-btn" onclick="cc(this)">Copy</button></div>
         <pre>"mavlink_uart": "/dev/ttyAMA0",
 "tf_sensor": { "uart": "/dev/ttyAMAx" }</pre>
       </div>
-
       <div class="callout tip">
         <span class="icon">💡</span>
-        <div><code>pinctrl -p</code> shows live GPIO state — pins change from <code>no … = none</code> to an alternate function like <code>TXD0</code> or <code>SDA1</code> after enabling interfaces. Run <code>pinout</code> to map GPIO numbers to physical pin numbers on the 40-pin header.</div>
+        <div><code>pinctrl -p</code> shows live GPIO state — pins change from <code>no … = none</code> to an alternate function after enabling interfaces. Run <code>pinout</code> to map GPIO numbers to physical pin positions on the header.</div>
+      </div>
+
+      <div class="callout danger" style="margin-top:10px">
+        <span class="icon">🛑</span>
+        <div><strong>Disable serial login shell — do this last.</strong> Run all hardware tests on the Checklist screen first. The Final step card there has the commands. Do not disable the console before testing — you need it to diagnose wiring problems.</div>
       </div>
     </div>
   </div>
@@ -525,6 +555,10 @@ groups   <span class="cm"># expected output includes: dialout</span></pre>
 "tf_sensor": { "uart": "/dev/ttyAMAx" },
 "wiper": { "wiper_gpio_pin": &lt;BCM pin&gt; }</pre>
       </div>
+      <div class="callout warn" style="margin-top:8px">
+        <span class="icon">📺</span>
+        <div>Running headless (no monitor)? Set <code>"display": false</code> in config.json — OpenCV will crash on a headless Pi if left <code>true</code>.</div>
+      </div>
     </div>
 
     <div>
@@ -551,6 +585,19 @@ python main.py --model yolo</pre></div>
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px"><strong style="font-size:13px">Step 4 — Range + OCR together</strong></div>
           <div class="code-block" style="margin:0"><div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="cc(this)">Copy</button></div><pre><span class="cm"># Sensor A (default):</span>  python sensor_ocr_test.py
 <span class="cm"># Sensor B:</span>           python sensor_ocr_test.py --sensor b</pre></div>
+          <div style="font-size:12px;color:#64748b;margin-top:5px">Expected when dirty board in view: <code>[TEST] DIRTY detected — range=0.842m</code></div>
+        </div>
+        <div class="card" style="padding:11px 14px;border-color:#fca5a5;background:#fef2f2">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px"><strong style="font-size:13px;color:#991b1b">Final step — Disable serial login shell</strong><span class="badge br">Do last</span></div>
+          <div class="callout danger" style="margin:0 0 8px"><span class="icon">🛑</span><div>Do this <strong>only after all tests above pass.</strong> The Pi OS attaches a login console to UART0 by default. If still running when ArduPilot connects, they fight over the wire and MAVLink will not connect.</div></div>
+          <div class="code-block" style="margin:0"><div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="cc(this)">Copy</button></div><pre><span class="cm"># Remove the token console=serial0,115200 from this line:</span>
+sudo nano /boot/firmware/cmdline.txt
+<span class="cm"># Do NOT use raspi-config on Pi 5 — edit the file directly</span>
+
+sudo systemctl disable serial-getty@ttyAMA0.service
+sudo systemctl stop serial-getty@ttyAMA0.service
+sudo reboot</pre></div>
+          <div style="font-size:12px;color:#64748b;margin-top:5px">Verify after reboot: <code>ls -l /proc/tty/driver/ | grep serial</code> → no output</div>
         </div>
       </div>
     </div>
@@ -1064,7 +1111,7 @@ Camera → BGR frame
 │  GPIO pump pin     →  pump relay        │
 │  GPIO wiper pin    →  wiper arm         │
 │                                         │
-│  pymavlink (MAVLink over UART)           │
+│  pymavlink (MAVLink over UART)          │
 └──────────────┬──────────────────────────┘</span>
                │ <span class="ua">UART — MAVLink</span>
 <span class="fc">┌──────────────▼──────────────────────────┐
