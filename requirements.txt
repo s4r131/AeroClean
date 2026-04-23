@@ -1,17 +1,18 @@
 # ─────────────────────────────────────────────────────────────────────────────
 # AeroClean — Python dependencies
 #
-# Install on Raspberry Pi OS Bookworm (Python 3.11+):
+# Install on Raspberry Pi OS Trixie (Python 3.12+):
 #   pip install -r requirements.txt
 #
-# picamera2 is NOT listed here because it must be installed via apt:
-#   sudo apt install python3-picamera2
 # See README.md Setup section for full Pi setup instructions.
 # ─────────────────────────────────────────────────────────────────────────────
 
 # Core computer vision
 opencv-python>=4.9.0
 numpy>=1.26.0
+
+# Pi camera (IMX708) — pip-installable; requires libcamera system libraries on Pi
+picamera2>=0.3.0
 
 # OCR (Model 1)
 pytesseract>=0.3.10
@@ -24,20 +25,20 @@ pytesseract>=0.3.10
 ultralytics>=8.3.0
 
 # MAVLink / drone mission (mission mode only)
-dronekit>=2.9.2
 pymavlink>=2.4.41
 # RPi.GPIO is Pi-only — install manually on the Pi:
 #   pip install RPi.GPIO
 
-# VL53L3CX ToF range sensor (sensor_ocr_test.py + mission mode)
+# VL53L3CX ToF range sensor — Sensor B (I2C, alternative)
+# Required when range_sensor.type = "b" in config.json.
 adafruit-circuitpython-vl53l4cd>=1.3.0
 adafruit-blinka>=8.0.0
 # Both packages require hardware I2C on the Pi — gracefully no-op on non-Pi systems
 # adafruit-blinka also depends on RPi.GPIO — install it on the Pi:
 #   pip install RPi.GPIO
 
-# TF-Luna / TFMini UART range sensor (sensor B — optional)
-# Required when range_sensor.type = "b" in config.json.
+# TF-Luna / TFMini UART range sensor — Sensor A (UART, default)
+# Required when range_sensor.type = "a" in config.json (the default).
 # Used by sensors.py (TFRangeSensor), sensor_ocr_test.py, and sensor_tf_test.py.
-# Safe to omit on sensor A (VL53L3CX) builds — gracefully skipped at runtime.
+# Gracefully skipped at runtime if pyserial is absent and sensor B is selected.
 pyserial>=3.5

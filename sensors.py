@@ -1,42 +1,19 @@
 """
 sensors.py — Sensor readers for the AeroClean companion computer.
 
-Three classes, all with thread-safe background reads:
+Two classes, both with thread-safe background reads:
 
-    SensorReader   — MicoAir MTF-02P optical flow + range sensor (MAVLink over UART).
     TFRangeSensor  — TF-Luna / TFMini forward range sensor over UART  (sensor A, default).
     RangeSensor    — VL53L3CX ToF forward range sensor over I2C  (sensor B).
 
 RangeSensor and TFRangeSensor share the same public API (start / stop / get_distance)
 so the mission approach controller works with either sensor without modification.
-
-MTF-02P detail
---------------
-The MTF-02P speaks MAVLink natively over UART at 115200 baud.
-It emits two message types:
-    DISTANCE_SENSOR  (msg ID 132) — range in centimetres
-    OPTICAL_FLOW     (msg ID 100) — integrated flow velocities + quality
-
-This module opens a pymavlink connection on a dedicated UART (separate from
-the DroneKit/ArduPilot connection in mavlink_controller.py) and parses both
-message types in a background daemon thread.
-
-Usage:
-    reader = SensorReader("/dev/ttyAMA1", baud=115200)
-    reader.start()
-
-    dist = reader.get_distance()      # metres, or None if not yet received
-    flow = reader.get_optical_flow()  # dict or None
-
-    reader.stop()
 """
 
 from __future__ import annotations
 
 import threading
 import time
-
-from pymavlink import mavutil
 
 try:
     import board
@@ -51,113 +28,6 @@ try:
     SERIAL_AVAILABLE = True
 except ImportError:
     SERIAL_AVAILABLE = False
-
-
-class SensorReader:
-    """
-    Background reader for the MicoAir MTF-02P over UART.
-
-    Thread-safe: get_distance() and get_optical_flow() may be called
-    from any thread.
-    """
-
-    def __init__(self, uart_port: str, baud: int = 115200):
-        self._uart_port = uart_port
-        self._baud = baud
-
-        self._conn = None
-        self._latest_distance_m: float | None = None
-        self._latest_flow: dict | None = None
-        self._lock = threading.Lock()
-        self._running = False
-        self._thread: threading.Thread | None = None
-
-    # ─────────────────────────────────────────────────────────────────────────
-    # Lifecycle
-    # ─────────────────────────────────────────────────────────────────────────
-
-    def start(self) -> None:
-        """Open the UART connection and start the background reader thread."""
-        self._conn = mavutil.mavlink_connection(
-            self._uart_port,
-            baud=self._baud,
-            autoreconnect=True,
-        )
-
-        self._running = True
-        self._thread = threading.Thread(target=self._read_loop, daemon=True, name="SensorReader")
-        self._thread.start()
-        print(f"[SENSORS] Reader started on {self._uart_port} @ {self._baud}")
-
-    def stop(self) -> None:
-        """Stop the background thread and close the UART connection."""
-        self._running = False
-        if self._thread is not None:
-            self._thread.join(timeout=2.0)
-        if self._conn is not None:
-            self._conn.close()
-        print("[SENSORS] Reader stopped")
-
-    # ─────────────────────────────────────────────────────────────────────────
-    # Public accessors (thread-safe)
-    # ─────────────────────────────────────────────────────────────────────────
-
-    def get_distance(self) -> float | None:
-        """
-        Latest range reading from the MTF-02P in metres.
-        Returns None until the first DISTANCE_SENSOR message is received.
-        """
-        with self._lock:
-            return self._latest_distance_m
-
-    def get_optical_flow(self) -> dict | None:
-        """
-        Latest optical flow reading.
-        Returns None until the first OPTICAL_FLOW message is received.
-
-        Dict keys:
-            flow_x   (float) — integrated X flow velocity, m/s
-            flow_y   (float) — integrated Y flow velocity, m/s
-            quality  (int)   — sensor quality 0–255 (255 = best)
-        """
-        with self._lock:
-            return self._latest_flow.copy() if self._latest_flow is not None else None
-
-    # ─────────────────────────────────────────────────────────────────────────
-    # Background thread
-    # ─────────────────────────────────────────────────────────────────────────
-
-    def _read_loop(self) -> None:
-        """Parse incoming MAVLink messages and update cached values."""
-        while self._running:
-            try:
-                msg = self._conn.recv_match(blocking=True, timeout=0.1)
-                if msg is None:
-                    continue
-
-                msg_type = msg.get_type()
-
-                if msg_type == "DISTANCE_SENSOR":
-                    # current_distance is in centimetres per MAVLink spec
-                    dist_m = msg.current_distance / 100.0
-                    with self._lock:
-                        self._latest_distance_m = dist_m
-                    print(f"[MTF-02P] distance={dist_m:.3f}m")
-
-                elif msg_type == "OPTICAL_FLOW":
-                    flow = {
-                        "flow_x": float(msg.flow_comp_m_x),
-                        "flow_y": float(msg.flow_comp_m_y),
-                        "quality": int(msg.quality),
-                    }
-                    with self._lock:
-                        self._latest_flow = flow
-                    print(f"[MTF-02P] flow_x={flow['flow_x']:.3f}  flow_y={flow['flow_y']:.3f}  quality={flow['quality']}")
-
-            except Exception as e:
-                # Log but never crash the thread — sensor dropout is recoverable
-                print(f"[SENSORS] Read error: {e}")
-                time.sleep(0.05)
 
 
 class RangeSensor:

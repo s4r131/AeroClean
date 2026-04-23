@@ -1,5 +1,5 @@
 """
-sensor_range_test.py — VL53L3CX ToF range sensor test (sensor B — I2C).
+sensor_tf_i2c_test.py — VL53L3CX ToF range sensor test (sensor B — I2C).
 
 Prints live distance readings. No camera, no OpenCV.
 
@@ -10,8 +10,8 @@ Prerequisites:
         sudo i2cdetect -y 1  →  expect 0x29
 
 Usage:
-    python sensor_range_test.py
-    python sensor_range_test.py --config config.json
+    python sensor_tf_i2c_test.py
+    python sensor_tf_i2c_test.py --config config.json
     Ctrl+C to stop.
 """
 
@@ -27,7 +27,7 @@ from sensors import RangeSensor
 def main() -> None:
     p = argparse.ArgumentParser(
         description=(
-            "VL53L3CX ToF range sensor test (sensor A — I2C).\n"
+            "VL53L3CX ToF range sensor test (sensor B — I2C).\n"
             "\n"
             "Reads distance from the VL53L3CX over I2C and prints live readings\n"
             "in metres and centimetres. No camera or OpenCV required.\n"

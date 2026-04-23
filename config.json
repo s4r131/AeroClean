@@ -62,7 +62,7 @@
     "_note": "Settings for the TF-Luna / TFMini UART range sensor. Used when range_sensor.type is 'a' (default). Also used by sensor_tf_test.py for standalone testing. Set uart to your UART device path before running.",
 
     "uart": null,
-    "uart_note": "Sensor A — required. UART device path for the TF sensor. Use the alias from ls -l /dev/serial* — e.g. /dev/serial0, /dev/serial2. Do not use the raw ttyAMAx number directly.",
+    "uart_note": "Sensor A — required. UART device path for the TF sensor. Run ls -l /dev/ttyAMA* to list all UARTs. The number matches your dtoverlay line — e.g. dtoverlay=uart3 gives /dev/ttyAMA3.",
 
     "baud": 115200,
     "baud_note": "Baud rate for the TF-Luna / TFMini. Fixed at 115200 by hardware — do not change."
@@ -100,19 +100,13 @@
   "_s8": "── Mission ──────────────────────────────────────────────────────────────",
 
   "mission": {
-    "_note": "Autonomous drone mission settings (python main.py --mode mission). All null values must be filled in before running. Run 'ls -l /dev/serial*' on the Pi to find UART device aliases — use those paths (e.g. /dev/serial0) not the raw ttyAMAx numbers.",
+    "_note": "Autonomous drone mission settings (python main.py --mode mission). All null values must be filled in before running. Run 'ls -l /dev/ttyAMA*' on the Pi to list all UARTs. Use /dev/ttyAMAX paths — the number matches your dtoverlay=uartX line in config.txt.",
 
     "mavlink_uart": null,
-    "mavlink_uart_note": "UART port connecting the Pi to the ArduPilot flight controller. Use the serial alias from ls -l /dev/serial* — e.g. /dev/serial0. Must match the FC TELEM port — see README Setup Step 3.",
+    "mavlink_uart_note": "UART port connecting the Pi to the ArduPilot flight controller. Run ls -l /dev/ttyAMA* to find the path — e.g. /dev/ttyAMA0. Must match the FC TELEM port — see README Setup Step 3.",
 
     "mavlink_baud": 57600,
     "mavlink_baud_note": "Baud rate for the ArduPilot MAVLink connection. Must match SERIALx_BAUD on the FC. 57600 is the ArduPilot default for companion computers.",
-
-    "sensor_uart": null,
-    "sensor_uart_note": "UART port connecting the Pi to the MicoAir MTF-02P optical flow sensor. Must be a different port from mavlink_uart. Use the serial alias from ls -l /dev/serial* — e.g. /dev/serial2.",
-
-    "sensor_baud": 115200,
-    "sensor_baud_note": "Baud rate for the MTF-02P. Fixed at 115200 by hardware — do not change.",
 
     "takeoff_altitude_m": 1.5,
     "takeoff_altitude_m_note": "Target hover altitude in metres after arming. 1.5 m gives clearance for indoor scanning without hitting the ceiling.",

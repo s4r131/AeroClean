@@ -58,14 +58,13 @@ AeroClean/
 ├── ocr_model.py          # Model 1: Tesseract OCR pipeline
 ├── yolo_model.py         # Model 2: YOLO11n NCNN inference
 ├── mission.py            # Autonomous mission state machine (IDLE→SCAN→APPROACH→CLEAN→RETURN)
-├── mavlink_controller.py # DroneKit wrapper — arm, takeoff, velocity commands, RTL
+├── mavlink_controller.py # pymavlink wrapper — arm, takeoff, velocity commands, RTL
 ├── sensors.py            # TF-Luna/TFMini UART range (sensor A, default) + VL53L3CX I2C range (sensor B)
 ├── pump.py               # GPIO pump controller
 ├── wiper.py              # Wiper arm controller (actuator TBD)
 ├── sensor_tf_test.py     # TF-Luna / TFMini UART range sensor standalone test
 ├── camera_test.py        # Pi camera live view + FPS test
-├── sensor_range_test.py  # VL53L3CX standalone distance test
-├── sensor_flow_test.py   # MTF-02P optical flow standalone test
+├── sensor_tf_i2c_test.py  # VL53L3CX standalone distance test
 ├── sensor_ocr_test.py    # Range sensor + OCR integration test
 ├── collect_data.py       # Capture training images from the Pi camera
 ├── config.json           # All tunable parameters (camera, YOLO, mission)
@@ -89,7 +88,7 @@ AeroClean/
 | **Board** | Raspberry Pi 5 (4 GB or 8 GB RAM) |
 | **Camera** | Arducam / Raspberry Pi Camera Module 3 — IMX708, 12MP, 75° diagonal |
 | **Camera connection** | CSI ribbon cable (included with Camera Module 3) |
-| **Flight controller** | ArduPilot-compatible FC (e.g. Pixhawk) — connected to Pi via UART (confirm path with `ls -l /dev/serial*`) |
+| **Flight controller** | ArduPilot-compatible FC (e.g. Pixhawk) — connected to Pi via UART (confirm path with `ls -l /dev/ttyAMA*`) |
 | **Flow sensor** | MicoAir MTF-02P optical flow sensor — connected to the FC optical flow UART port (not the Pi) |
 | **Range sensor** | **Sensor A (default):** TF-Luna / TFMini — UART (set `tf_sensor.uart` in config.json)  **or  Sensor B:** VL53L3CX ToF — I2C, GPIO 2/3 (pins 3/5), 3 m range (set `range_sensor.type = "b"`) |
 | **Pump** | Relay-driven pump on BCM GPIO pin (configurable in `config.json`) |
@@ -113,7 +112,7 @@ How all the hardware pieces connect and what each one does.
 │  GPIO pump pin         →  pump relay    │
 │  GPIO wiper pin        →  wiper arm     │
 │                                         │
-│  DroneKit (MAVLink over UART)           │
+│  pymavlink (MAVLink over UART)          │
 └──────────────┬──────────────────────────┘
                │ UART — MAVLink
 ┌──────────────▼──────────────────────────┐
@@ -134,8 +133,8 @@ ArduPilot handles all low-level stabilisation. The Pi sends body-frame velocity 
 
 | Pi interface | Device | Purpose |
 |---|---|---|
-| UART (e.g. `/dev/serial0`) | ArduPilot FC TELEM port | MAVLink command channel (DroneKit) |
-| UART (e.g. `/dev/serial2`) | TF-Luna / TFMini (sensor A, default) | Forward range for approach controller |
+| UART (e.g. `/dev/ttyAMA0`) | ArduPilot FC TELEM port | MAVLink command channel (pymavlink) |
+| UART (e.g. `/dev/ttyAMA3`) | TF-Luna / TFMini (sensor A, default) | Forward range for approach controller |
 | I2C GPIO 2/3 (pins 3/5) | VL53L3CX (sensor B, alternative) | Forward range — I2C alternative to sensor A |
 | GPIO BCM pin (configurable) | Pump relay IN | Cleaning mechanism trigger |
 | GPIO BCM pin (configurable) | Wiper arm control wire | Wiper arm actuation |
@@ -144,7 +143,7 @@ ArduPilot handles all low-level stabilisation. The Pi sends body-frame velocity 
 
 | FC interface | Device | Purpose |
 |---|---|---|
-| TELEM port (UART) | Raspberry Pi | MAVLink — receives velocity targets from DroneKit |
+| TELEM port (UART) | Raspberry Pi | MAVLink — receives velocity targets from pymavlink |
 | Optical flow port (UART) | MicoAir MTF-02P | Optical flow input for EKF position hold |
 | IMU (onboard) | — | Attitude estimation and stabilisation |
 | ESC outputs | Motors | Motor speed control |
@@ -189,20 +188,14 @@ Complete all four sub-steps in order. The Python packages must go inside the vir
 
 #### 2a — Update and install system packages
 
-This downloads and installs the camera library, OCR engine, and I2C diagnostic tools. It will take a few minutes.
+This downloads and installs the Tesseract OCR engine and I2C diagnostic tools. It will take a few minutes.
 
 ```bash
 sudo apt update && sudo apt upgrade -y
-sudo apt install -y python3-picamera2 tesseract-ocr libcap-dev i2c-tools
+sudo apt install -y tesseract-ocr libcap-dev i2c-tools
 ```
 
-Then verify the camera is detected:
-```bash
-libcamera-hello --list-cameras
-```
-The output should contain `IMX708` if the camera is detected correctly.
-
-> ✓ **Before continuing:** you should see `IMX708` in the output above. If the camera is not listed, check the CSI ribbon cable connection and try again.
+> ✓ **Before continuing:** the install should finish without any `ERROR` lines.
 
 #### 2b — Clone the repository
 
@@ -226,7 +219,7 @@ You should see `main.py`, `config.json`, `requirements.txt`, and the rest of the
 A virtual environment is an isolated Python workspace. It keeps AeroClean's packages separate from the rest of the Pi — this prevents version conflicts and makes the project self-contained.
 
 ```bash
-python -m venv aeroclean_env
+python3 -m venv aeroclean_env
 source aeroclean_env/bin/activate
 ```
 
@@ -251,15 +244,15 @@ With the environment active, install all required Python packages:
 pip install -r requirements.txt
 ```
 
-This installs everything the project needs — DroneKit, pymavlink, Ultralytics YOLO, the Adafruit sensor libraries, and more. It will take a few minutes the first time.
+This installs everything the project needs — pymavlink, Ultralytics YOLO, the Adafruit sensor libraries, and more. It will take a few minutes the first time.
 
 > ✓ **Before continuing:** the install should finish without any `ERROR` lines. Warnings are fine.
 
-### 3. Enable hardware interfaces (UART and I2C)
+### 3. Enable hardware interfaces (camera, UART and I2C)
 
-The Pi's UART and I2C ports are **off by default**. These steps turn them on by editing a config file and rebooting. Without this, the sensors and flight controller will not be detected at all.
+The Pi's camera, UART, and I2C interfaces must be explicitly enabled by editing `/boot/firmware/config.txt` and rebooting. Without this, the camera, sensors, and flight controller will not be detected at all.
 
-All changes go in `/boot/firmware/config.txt`. After each change, reboot and use `pinctrl -p` to confirm it worked — this command shows the live state of every GPIO pin on the 40-pin header.
+After each change below, reboot and use `pinctrl -p` to confirm GPIO-mapped interfaces are active. The camera uses a dedicated CSI connector (not the GPIO header), so `pinctrl -p` will not show a change for it — use `libcamera-hello --list-cameras` instead.
 
 ---
 
@@ -308,7 +301,57 @@ All changes go in `/boot/firmware/config.txt`. After each change, reboot and use
 
 The `no ... = none` pattern means the pin is sitting idle with no peripheral attached. After each step below you will see specific pins switch from `no ... = none` to an alternate function with a real role name. That transition is your confirmation the interface is active.
 
-> **Note:** `pinctrl -p` uses physical pin numbers (1–40 on the header), not BCM GPIO numbers. GPIO14 lives on physical pin 8; GPIO2 lives on physical pin 3. The `// GPIOx` comment tells you the BCM number.
+> **Note:** `pinctrl -p` uses physical pin numbers (1–40 on the header), not BCM GPIO numbers. GPIO14 lives on physical pin 8; GPIO2 lives on physical pin 3. The `// GPIOx` comment tells you the BCM number. To see a visual map of every pin on your board, run:
+> ```bash
+> pinout
+> ```
+> `pinout` prints a colour-coded diagram of the 40-pin header with GPIO numbers, power rails, and ground pins labelled — use it alongside `pinctrl -p` to match a BCM number to its physical position.
+
+---
+
+#### Sub-step 0 — Enable the IMX708 camera
+
+> **Do this first.** The camera must be configured in `config.txt` before `libcamera-hello` or `camera_test.py` can detect it.
+
+Open the config file:
+```bash
+sudo nano /boot/firmware/config.txt
+```
+
+Find the line `camera_auto_detect=1` and change it to:
+```
+camera_auto_detect=0
+```
+
+Then find the `[all]` section and add the overlay line below it:
+```
+dtoverlay=imx708
+```
+
+> **If your ribbon cable is in the CAM0 port** (lower port) instead of CAM1 (upper port), use `dtoverlay=imx708,cam0` instead. Run `pinout` to see a labelled diagram of both ports:
+> ```bash
+> pinout
+> ```
+> Look for the `CAM0` and `CAM1` labels to identify which port your ribbon is connected to.
+
+Save and exit (`Ctrl+X` → `Y` → `Enter`), then reboot:
+```bash
+sudo reboot
+```
+
+After rebooting, reconnect via SSH, then re-enter the project and activate the environment:
+```bash
+cd ~/AeroClean
+source aeroclean_env/bin/activate
+```
+
+Verify the camera is detected:
+```bash
+libcamera-hello --list-cameras
+```
+Expected output contains `IMX708`. If the camera is not listed, recheck the CSI ribbon cable and that the overlay line was saved correctly.
+
+> ✓ **Before continuing:** confirm `IMX708` appears in the `libcamera-hello` output above.
 
 ---
 
@@ -318,7 +361,7 @@ Open the file with:
 ```bash
 sudo nano /boot/firmware/config.txt
 ```
-Add the following line, then save and exit: press `Ctrl+O` → `Enter` → `Ctrl+X`.
+Add the following line, then save and exit: press `Ctrl+X` → `Y` → `Enter`.
 ```
 enable_uart=1
 ```
@@ -367,7 +410,7 @@ Open the file with:
 ```bash
 sudo nano /boot/firmware/config.txt
 ```
-Add a free overlay UART not already taken by the MTF-02P (e.g. `dtoverlay=uart4` or another free number), then save and exit: press `Ctrl+O` → `Enter` → `Ctrl+X`.
+Add a free overlay UART not already taken by the MTF-02P (e.g. `dtoverlay=uart4` or another free number), then save and exit: press `Ctrl+X` → `Y` → `Enter`.
 ```
 dtoverlay=uartX
 ```
@@ -385,23 +428,21 @@ source aeroclean_env/bin/activate
 
 Run `pinctrl -p` and confirm the new UART pins changed from `none` to an alternate function — the exact pins depend on which overlay you chose.
 
-Then find the device path:
+Then list all available UARTs:
 ```bash
-ls -l /dev/serial*
+ls -l /dev/ttyAMA*
 ```
-This shows symlinks like `/dev/serial0 -> ttyAMA0` — use the **`/dev/serialX` path directly** in config.json (not the `ttyAMAx` it points to). Note the alias for the TF sensor — it goes into `config.json → tf_sensor.uart` (section `_s6`).
+`dtoverlay=uartX` creates `/dev/ttyAMAX` with the same number — e.g. `dtoverlay=uart3` → `/dev/ttyAMA3`. Note the path for the TF sensor — it goes into `config.json → tf_sensor.uart` (section `_s6`).
 
 **Debug check — confirm raw bytes are arriving before running any scripts:**
 
-From the `ls -l /dev/serial*` output, find the `ttyAMAx` name that your TF sensor port points to (e.g. `ttyAMA3`). Then run:
 ```bash
-sudo cat /dev/ttyAMA3
+cat /dev/ttyAMAX   # replace X with your TF sensor UART number, e.g. cat /dev/ttyAMA3
 ```
-Replace `ttyAMA3` with whatever name appeared in the symlink output. If the sensor is powered and wired correctly you will see a stream of garbled characters — that is the raw binary frames from the TF sensor. Press `Ctrl+C` to stop.
 
-If you see nothing, check TX/RX wiring (swap them if needed), confirm the sensor has power, and re-check which overlay you added in config.txt.
+You should see a stream of garbled binary data in the terminal — this confirms the sensor is transmitting. Press `Ctrl+C` to stop. If nothing appears, recheck wiring and that the overlay number matches.
 
-> ✓ **Before continuing:** confirm the new UART device appears in `ls -l /dev/serial*`, raw bytes appear with `sudo cat`, and you have noted the `/dev/serialX` path.
+> ✓ **Before continuing:** confirm the new UART device appears in `ls -l /dev/ttyAMA*` and you have noted the `/dev/ttyAMAX` path.
 
 ---
 
@@ -413,7 +454,7 @@ Open the file with:
 ```bash
 sudo nano /boot/firmware/config.txt
 ```
-Add the following line, then save and exit: press `Ctrl+O` → `Enter` → `Ctrl+X`.
+Add the following line, then save and exit: press `Ctrl+X` → `Y` → `Enter`.
 ```
 dtparam=i2c_arm=on
 ```
@@ -449,11 +490,205 @@ Expected: `29` appears at address `0x29` in the grid. If the grid is all dashes,
 
 > ✓ **Before continuing:** confirm `29` appears in the `i2cdetect` grid above.
 
+#### Sub-step 3 — Add your user to the dialout group
+
+Without this, any attempt to read `/dev/ttyAMA*` or open a MAVLink connection will fail with `Permission denied`.
+
+```bash
+sudo usermod -aG dialout $USER
+```
+
+Log out and back in (or reboot) for the group change to take effect. Verify:
+```bash
+groups
+```
+The output should include `dialout`.
+
+> ✓ **Before continuing:** confirm `dialout` appears in the `groups` output above.
+
 ---
 
-#### Sub-step 0 — Disable the serial login shell
+#### Verified `/boot/firmware/config.txt`
 
-> **Do this after enabling your UARTs and I2C above, before the mission step.** The Pi OS attaches a login console to the primary UART by default. If it is still running when ArduPilot connects, the OS and the flight controller will fight over the same wire and MAVLink will never connect.
+After all sub-steps, your `config.txt` should contain at minimum. Use **only one** of the two blocks below — whichever matches your hardware:
+
+**Sensor A (TF-Luna / TFMini — UART, default):**
+```
+enable_uart=1
+dtoverlay=uartX
+```
+One overlay UART needed for the TF sensor (sub-step 2A). Replace `uartX` with the number you chose. Add `dtoverlay=uartX` lines for any additional serial peripherals.
+
+**Sensor B (VL53L3CX — I2C):**
+```
+enable_uart=1
+dtparam=i2c_arm=on
+```
+No overlay UART needed — the VL53L3CX uses I2C. Add `dtoverlay=uartX` lines for any additional serial peripherals.
+
+---
+
+#### Find your device paths, then update config.json
+
+List all available UART devices:
+
+```bash
+ls -l /dev/ttyAMA*
+```
+Example output:
+```
+/dev/ttyAMA0
+/dev/ttyAMA3
+```
+The number matches your `dtoverlay` line — `dtoverlay=uart3` creates `/dev/ttyAMA3`. Use these paths directly in `config.json`.
+
+Once you know which path belongs to each device, open `config.json`:
+```bash
+sudo nano config.json
+```
+Find the `_s8` section (Mission) and fill in the MAVLink UART path, then save and exit: press `Ctrl+X` → `Y` → `Enter`.
+```json
+"mavlink_uart": "/dev/ttyAMA0"
+```
+Replace the number with the path for the ArduPilot FC. **Values must stay inside double quotes** — e.g. `"/dev/ttyAMA0"`, not `/dev/ttyAMA0`.
+
+---
+
+### 4. Configure config.json
+
+Now that you know which `/dev/ttyAMAX` path belongs to each UART (from Step 3), enter those values into `config.json`. **The mission will not start until these are filled in** — it will print a clear error if any required value is still `null`.
+
+#### 4a — Fill in config.json
+
+First list all UART devices:
+```bash
+ls -l /dev/ttyAMA*
+```
+Sensor B (VL53L3CX) only — confirm the I2C sensor is visible:
+```bash
+sudo i2cdetect -y 1
+```
+
+Open `config.json`:
+```bash
+sudo nano config.json
+```
+Find the `_s8` section (Mission) and fill in the MAVLink UART path, then save and exit: press `Ctrl+X` → `Y` → `Enter`.
+```json
+"mavlink_uart": "/dev/ttyAMA0"
+```
+Replace the number with the path for the ArduPilot FC from `ls -l /dev/ttyAMA*`. **Values must stay inside double quotes** — e.g. `"/dev/ttyAMA0"`, not `/dev/ttyAMA0`.
+
+Find the `_s5` section (Range sensor) and set your sensor type. Default is `"a"` (TF-Luna/TFMini). Change to `"b"` if using VL53L3CX:
+```json
+"type": "a"
+```
+If using sensor A (TF-Luna, default), find the `_s6` section (TF-Luna / TFMini) and set:
+```json
+"uart": "/dev/ttyAMA3"
+```
+Replace the number with the path for the TF sensor from `ls -l /dev/ttyAMA*`. The number matches your `dtoverlay=uartX` line (e.g. `dtoverlay=uart3` → `/dev/ttyAMA3`). **The value must stay inside double quotes** — e.g. `"/dev/ttyAMA3"`. If using sensor B (VL53L3CX), `i2c_address` in `_s5` only needs changing if the sensor was remapped from `0x29`.
+
+If running without a monitor:
+```json
+"display": false
+```
+
+### 5. Test each hardware component
+
+Run each script in order. Every test must pass before moving on — do not run mission mode until all pass.
+
+#### 5a — Camera
+
+Confirm the camera is detected and delivering frames before anything else.
+
+```bash
+python camera_test.py
+```
+Expected: live window opens, terminal prints resolution and FPS every second.
+```
+[CAM TEST] 1920x1080  28.3 FPS
+```
+
+---
+
+#### 5b — OCR and YOLO inference
+
+Confirm the vision models run on camera frames. No sensors, no drone. Run one or both:
+
+```bash
+# OCR — look for the word "dirty" on the board
+python main.py --model ocr
+
+# OR — YOLO — classify the board as clean or dirty
+python main.py --model yolo
+```
+Expected: live window with bounding boxes or OCR overlays. Press `q` to quit.
+
+---
+
+#### 5c — Range sensor
+
+Run the test for whichever sensor you have wired.
+
+**Option A — TF-Luna / TFMini (UART, default):**
+```bash
+python sensor_tf_test.py
+```
+Expected:
+```
+[TF TEST] 0.452 m  (45.2 cm)  | strength=412  | temp=32.1 C
+```
+Requires `tf_sensor.uart` to be set in `config.json` first — the script will error clearly if it is not.
+
+**Option B — VL53L3CX (I2C):**
+```bash
+python sensor_tf_i2c_test.py
+```
+Expected:
+```
+[RANGE TEST] 0.452 m  (45.2 cm)
+```
+
+---
+
+#### 5d — Range sensor + OCR together
+
+Confirm the full detection pipeline — this is what the mission APPROACH state does.
+
+**Option A — TF-Luna / TFMini (UART, default):**
+```bash
+python sensor_ocr_test.py
+```
+
+**Option B — VL53L3CX (I2C):**
+```bash
+python sensor_ocr_test.py --sensor b
+```
+
+Expected for both: `CLEAN` banner when nothing is detected. When a board marked "dirty" is in view:
+```
+[TEST] DIRTY detected — range=0.842m
+```
+Window shows bounding box + distance overlay.
+
+---
+
+#### 5e — Wiper
+
+> **Not yet implemented** — wiper actuator type is TBD. This step is a placeholder for when the wiper mechanism is confirmed and `wiper.py` is fully implemented.
+
+Once the wiper is wired and implemented, this test will confirm the full cleaning cycle end-to-end: OCR detects dirty board → range sensor confirms distance → wiper engages.
+
+**Do not run `--mode mission` until all steps pass.**
+
+---
+
+#### Final step — Disable the serial login shell
+
+> **Do this only after all test scripts above have passed.** The `cat /dev/ttyAMAX` debug check and every test script that reads a UART require the serial console to still be active — removing it first means you lose the ability to see raw bytes and diagnose wiring problems. Once everything is confirmed working, disable it before running mission mode.
+>
+> The Pi OS attaches a login console to the primary UART by default. If it is still running when ArduPilot connects, the OS and the flight controller will fight over the same wire and MAVLink will never connect.
 
 **a) Remove the serial console from the kernel command line:**
 
@@ -461,7 +696,7 @@ Expected: `29` appears at address `0x29` in the grid. If the grid is all dashes,
 sudo nano /boot/firmware/cmdline.txt
 ```
 
-The file contains a single long line. Find and delete the token `console=serial0,115200` from that line. Leave everything else exactly as-is. Save and close (`Ctrl+O`, `Enter`, `Ctrl+X`).
+The file contains a single long line. Find and delete the token `console=serial0,115200` from that line. Leave everything else exactly as-is. Save and exit (`Ctrl+X` → `Y` → `Enter`).
 
 > **Do NOT use `raspi-config` for this step on Pi 5.** On Bookworm, `raspi-config` edits the wrong file and the change has no effect. Edit `/boot/firmware/cmdline.txt` directly.
 
@@ -493,210 +728,16 @@ This should return nothing — if a getty process appears, the service did not d
 
 ---
 
-#### Sub-step 3 — Add your user to the dialout group
-
-Without this, any attempt to read `/dev/ttyAMA*` or open a DroneKit connection will fail with `Permission denied`.
-
-```bash
-sudo usermod -aG dialout $USER
-```
-
-Log out and back in (or reboot) for the group change to take effect. Verify:
-```bash
-groups
-```
-The output should include `dialout`.
-
-> ✓ **Before continuing:** confirm `dialout` appears in the `groups` output above.
-
----
-
-#### Verified `/boot/firmware/config.txt`
-
-After all sub-steps, your `config.txt` should contain at minimum:
-
-**Sensor A (TF-Luna / TFMini — UART, default):**
-```
-enable_uart=1
-dtoverlay=uartX
-```
-One overlay UART needed for the TF sensor (sub-step 2A). Replace `uartX` with the number you chose.
-
-**Sensor B (VL53L3CX — I2C):**
-```
-enable_uart=1
-dtparam=i2c_arm=on
-```
-No overlay UART needed — the VL53L3CX uses I2C.
-
-Add `dtoverlay=uartX` lines for any additional serial peripherals.
-
----
-
-#### Find your device paths, then update config.json
-
-Run `ls -l /dev/serial*` to see the named aliases for each UART:
-
-```bash
-ls -l /dev/serial*
-```
-Example output:
-```
-/dev/serial0 -> ttyAMA0
-/dev/serial1 -> ttyAMA5
-/dev/serial2 -> ttyAMA3
-```
-**Use the `/dev/serialX` path directly in config.json** — not the `ttyAMAx` it points to. This is what makes the port reliably accessible.
-
-Once you know which alias belongs to each device, open `config.json`:
-```bash
-sudo nano config.json
-```
-Find the `_s8` section (Mission) and fill in the MAVLink UART path, then save and exit: press `Ctrl+O` → `Enter` → `Ctrl+X`.
-```json
-"mavlink_uart": "/dev/serial0"
-```
-Replace the number with the alias for the ArduPilot FC. **Values must stay inside double quotes** — e.g. `"/dev/serial0"`, not `/dev/serial0`.
-
----
-
-### 4. Map config.json and verify each hardware component
-
-Now that you know which `/dev/serialX` alias belongs to each UART (from Step 3), you need to enter those values into `config.json`. **The mission will not start until these are filled in** — it will print a clear error if any required value is still `null`.
-
-**Do this before attempting a mission.** Every interface you enabled in Step 3 must be mapped in `config.json` and confirmed working with its test script.
-
-#### 4a — Fill in config.json
-
-First find your UART device paths:
-```bash
-ls -l /dev/serial*
-```
-Sensor B (VL53L3CX) only — confirm the I2C sensor is visible:
-```bash
-sudo i2cdetect -y 1
-```
-
-Open `config.json`:
-```bash
-sudo nano config.json
-```
-Find the `_s8` section (Mission) and fill in the MAVLink UART alias, then save and exit: press `Ctrl+O` → `Enter` → `Ctrl+X`.
-```json
-"mavlink_uart": "/dev/serial0"
-```
-Replace the number with the alias for the ArduPilot FC from `ls -l /dev/serial*`. **Values must stay inside double quotes** — e.g. `"/dev/serial0"`, not `/dev/serial0`.
-
-Find the `_s5` section (Range sensor) and set your sensor type. Default is `"a"` (TF-Luna/TFMini). Change to `"b"` if using VL53L3CX:
-```json
-"type": "a"
-```
-If using sensor A (TF-Luna, default), find the `_s6` section (TF-Luna / TFMini) and set:
-```json
-"uart": "/dev/serial3"
-```
-Replace the number with the alias for the TF sensor from `ls -l /dev/serial*`. **The value must stay inside double quotes** — e.g. `"/dev/serial3"`. If using sensor B (VL53L3CX), `i2c_address` in `_s5` only needs changing if the sensor was remapped from `0x29`.
-
-If running without a monitor:
-```json
-"display": false
-```
-
-#### 4b — Step 1: Camera
-
-Confirm the camera is detected and delivering frames before anything else.
-
-```bash
-python camera_test.py
-```
-Expected: live window opens, terminal prints resolution and FPS every second.
-```
-[CAM TEST] 1920x1080  28.3 FPS
-```
-
----
-
-#### 4c — Step 2: OCR and YOLO inference
-
-Confirm the vision models run on camera frames. No sensors, no drone. Run one or both:
-
-```bash
-# OCR — look for the word "dirty" on the board
-python main.py --model ocr
-
-# OR — YOLO — classify the board as clean or dirty
-python main.py --model yolo
-```
-Expected: live window with bounding boxes or OCR overlays. Press `q` to quit.
-
----
-
-#### 4d — Step 3: Range sensor
-
-Run the test for whichever sensor you have wired.
-
-**Option A — TF-Luna / TFMini (UART, default):**
-```bash
-python sensor_tf_test.py
-```
-Expected:
-```
-[TF TEST] 0.452 m  (45.2 cm)  | strength=412  | temp=32.1 C
-```
-Requires `tf_sensor.uart` to be set in `config.json` first — the script will error clearly if it is not.
-
-**Option B — VL53L3CX (I2C):**
-```bash
-python sensor_range_test.py
-```
-Expected:
-```
-[RANGE TEST] 0.452 m  (45.2 cm)
-```
-
----
-
-#### 4e — Step 4: Range sensor + OCR together
-
-Confirm the full detection pipeline — this is what the mission APPROACH state does.
-
-**Option A — TF-Luna / TFMini (UART, default):**
-```bash
-python sensor_ocr_test.py
-```
-
-**Option B — VL53L3CX (I2C):**
-```bash
-python sensor_ocr_test.py --sensor b
-```
-
-Expected for both: `CLEAN` banner when nothing is detected. When a board marked "dirty" is in view:
-```
-[TEST] DIRTY detected — range=0.842m
-```
-Window shows bounding box + distance overlay.
-
----
-
-#### 4g — Step 6: Range sensor + OCR + Wiper
-
-> **Not yet implemented** — wiper actuator type is TBD. This step is a placeholder for when the wiper mechanism is confirmed and `wiper.py` is fully implemented.
-
-Once the wiper is wired and implemented, this test will confirm the full cleaning cycle end-to-end: OCR detects dirty board → range sensor confirms distance → wiper engages.
-
-**Do not run `--mode mission` until all steps pass.**
-
----
-
 ## Pre-mission checklist
 
 Use this after completing all setup steps to confirm nothing was missed before arming.
 
 ### Software
 
-- [ ] System packages installed: `sudo apt install python3-picamera2 tesseract-ocr libcap-dev i2c-tools`
+- [ ] System packages installed: `sudo apt install tesseract-ocr libcap-dev i2c-tools`
+- [ ] IMX708 camera enabled in `/boot/firmware/config.txt` (`camera_auto_detect=0`, `dtoverlay=imx708`) and `libcamera-hello --list-cameras` shows `IMX708`
 - [ ] Virtual environment created and active (`source aeroclean_env/bin/activate`)
-- [ ] Python packages installed inside the venv: `pip install -r requirements.txt`
+- [ ] Python packages installed inside the venv: `pip install -r requirements.txt` (includes `picamera2`)
 - [ ] Serial login shell disabled — `console=serial0,115200` removed from `/boot/firmware/cmdline.txt` and `serial-getty@ttyAMA0.service` disabled
 - [ ] `dtparam=i2c_arm=on` in `/boot/firmware/config.txt` **(sensor B only — VL53L3CX)**
 - [ ] `enable_uart=1` and `dtoverlay=uartX` in `/boot/firmware/config.txt`
@@ -705,11 +746,11 @@ Use this after completing all setup steps to confirm nothing was missed before a
 
 ### config.json
 
-Set these `null` values before running mission mode. Run `ls -l /dev/serial*` to find the device aliases — use the `/dev/serialX` path, not the raw `ttyAMAx`. Do not copy the placeholders below verbatim:
+Set these `null` values before running mission mode. Run `ls -l /dev/ttyAMA*` to list all UARTs — the number matches your `dtoverlay=uartX` line (e.g. `dtoverlay=uart3` → `/dev/ttyAMA3`). Do not copy the placeholders below verbatim:
 
 ```json
 "mission": {
-  "mavlink_uart": "<your /dev/serialX for ArduPilot FC>",
+  "mavlink_uart": "<your /dev/ttyAMAX for ArduPilot FC>",
   "pump_gpio_pin": <BCM pin number for pump relay IN>
 },
 "range_sensor": {
@@ -725,7 +766,7 @@ Set `range_sensor.type` to `"a"` for TF-Luna/TFMini (UART, default) or `"b"` for
 If using sensor A (TF-Luna, default), also set:
 ```json
 "tf_sensor": {
-  "uart": "<your /dev/serialX for TF sensor>"
+  "uart": "<your /dev/ttyAMAX for TF sensor>"
 }
 ```
 

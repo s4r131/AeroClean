@@ -310,12 +310,12 @@ python main.py --mode mission</pre>
       <h3>Range sensor options</h3>
       <div style="display:flex;flex-direction:column;gap:6px">
         <div class="card" style="padding:10px 14px;display:flex;align-items:center;gap:10px">
-          <span class="sa">Sensor A</span>
-          <div style="font-size:12.5px;color:#374151"><strong>VL53L3CX</strong> — I2C, GPIO 2/3, default</div>
+          <span class="sa" style="white-space:nowrap;flex-shrink:0">Sensor A</span>
+          <div style="font-size:12.5px;color:#374151"><strong>TF-Luna / TFMini</strong> — UART, default</div>
         </div>
         <div class="card" style="padding:10px 14px;display:flex;align-items:center;gap:10px">
-          <span class="sb">Sensor B</span>
-          <div style="font-size:12.5px;color:#374151"><strong>TF-Luna / TFMini</strong> — UART, set <code>range_sensor.type = "b"</code></div>
+          <span class="sb" style="white-space:nowrap;flex-shrink:0">Sensor B</span>
+          <div style="font-size:12.5px;color:#374151"><strong>VL53L3CX</strong> — I2C, GPIO 2/3, set <code>range_sensor.type = "b"</code></div>
         </div>
       </div>
     </div>
@@ -336,8 +336,8 @@ python main.py --mode mission</pre>
           <tr><td><strong>Board</strong></td><td>Raspberry Pi 5 — 4 GB or 8 GB RAM</td></tr>
           <tr><td><strong>Camera</strong></td><td>Camera Module 3 (IMX708) — 12MP, 75° diagonal, CSI ribbon</td></tr>
           <tr><td><strong>Flight controller</strong></td><td>ArduPilot-compatible FC (e.g. Pixhawk) — TELEM port → Pi UART</td></tr>
-          <tr><td><strong>Flow sensor</strong></td><td>MicoAir MTF-02P optical flow — UART (second Pi UART port)</td></tr>
-          <tr><td><strong>Range sensor</strong></td><td><span class="sa">A</span> VL53L3CX — I2C GPIO 2/3  <em>or</em>  <span class="sb">B</span> TF-Luna/TFMini — UART</td></tr>
+          <tr><td><strong>Flow sensor</strong></td><td>MicoAir MTF-02P optical flow — connects to ArduPilot FC (not Pi)</td></tr>
+          <tr><td><strong>Range sensor</strong></td><td><span class="sa">A</span> TF-Luna/TFMini — UART  <em>or</em>  <span class="sb">B</span> VL53L3CX — I2C GPIO 2/3</td></tr>
           <tr><td><strong>Pump</strong></td><td>Relay-driven pump — relay IN → BCM GPIO pin (configurable)</td></tr>
           <tr><td><strong>Wiper</strong></td><td>Wiper arm — control wire → BCM GPIO pin (actuator TBD)</td></tr>
           <tr><td><strong>OS</strong></td><td>Raspberry Pi OS Bookworm 64-bit — Dec 2023 or later</td></tr>
@@ -349,13 +349,13 @@ python main.py --mode mission</pre>
       <table class="dep-table">
         <thead><tr><th>Pi connection</th><th>Device</th><th>Purpose</th></tr></thead>
         <tbody>
-          <tr><td>UART <code>/dev/ttyAMAx</code></td><td>ArduPilot FC TELEM</td><td>MAVLink — DroneKit</td></tr>
-          <tr><td>UART <code>/dev/ttyAMAy</code></td><td>MTF-02P</td><td>Optical flow — pymavlink</td></tr>
-          <tr><td>I2C GPIO 2/3 (pins 3/5)</td><td>VL53L3CX <span class="sa">Sensor A</span></td><td>Forward range (I2C)</td></tr>
-          <tr><td>UART <code>/dev/ttyAMAz</code></td><td>TF-Luna/TFMini <span class="sb">Sensor B</span></td><td>Forward range (UART alt.)</td></tr>
+          <tr><td>UART <code>/dev/ttyAMA0</code></td><td>ArduPilot FC TELEM</td><td>MAVLink — pymavlink</td></tr>
+          <tr><td>UART <code>/dev/ttyAMAx</code></td><td>TF-Luna/TFMini <span class="sa">Sensor A</span></td><td>Forward range (UART, default)</td></tr>
+          <tr><td>I2C GPIO 2/3 (pins 3/5)</td><td>VL53L3CX <span class="sb">Sensor B</span></td><td>Forward range (I2C, alternative)</td></tr>
           <tr><td>BCM GPIO (configurable)</td><td>Pump relay IN</td><td>Cleaning trigger</td></tr>
           <tr><td>BCM GPIO (configurable)</td><td>Wiper arm</td><td>Wiper actuation</td></tr>
         </tbody>
+        <tfoot><tr><td colspan="3" style="font-size:12px;color:#64748b;padding-top:6px">MTF-02P optical flow connects to the FC optical flow UART port — not the Pi.</td></tr></tfoot>
       </table>
     </div>
 
@@ -365,21 +365,22 @@ python main.py --mode mission</pre>
 <span class="pi">┌─────────────────────────────────────────┐
 │           Raspberry Pi 5                │
 │                                         │
-│  IMX708 Camera     →  YOLO / OCR        │
-│  MTF-02P (UART)    →  optical flow      │
-│  VL53L3CX (I2C)    →  forward range (A) │
-│  TF-Luna  (UART)   →  forward range (B) │
+│  IMX708 Camera         →  YOLO / OCR    │
+│  TF-Luna/TFMini (UART) →  forward range │
 │  Mission state machine                  │
-│  GPIO pump pin     →  pump relay        │
-│  GPIO wiper pin    →  wiper arm         │
-│  DroneKit (MAVLink over UART)           │
+│  GPIO pump pin         →  pump relay    │
+│  GPIO wiper pin        →  wiper arm     │
+│                                         │
+│  pymavlink (MAVLink over UART)           │
 └──────────────┬──────────────────────────┘</span>
                │ <span class="ua">UART — MAVLink</span>
 <span class="fc">┌──────────────▼──────────────────────────┐
-│         ArduPilot FC                    │
+│           ArduPilot FC                  │
+│                                         │
 │  Attitude stabilisation (own IMU)       │
 │  Motor control                          │
 │  GUIDED mode — accepts velocity targets │
+│  MTF-02P (UART)      →  optical flow/EKF│
 └─────────────────────────────────────────┘</span></div>
 
       <div class="callout info" style="margin-top:10px">
@@ -389,8 +390,8 @@ python main.py --mode mission</pre>
 
       <h3>UART count by config</h3>
       <div style="display:flex;flex-direction:column;gap:6px;font-size:13px">
-        <div class="card" style="padding:10px 14px"><span class="sa">Sensor A</span> <span style="color:#374151;margin-left:8px">2 UARTs — FC + MTF-02P</span></div>
-        <div class="card" style="padding:10px 14px"><span class="sb">Sensor B</span> <span style="color:#374151;margin-left:8px">3 UARTs — FC + MTF-02P + TF sensor</span></div>
+        <div class="card" style="padding:10px 14px"><span class="sa">Sensor A</span> <span style="color:#374151;margin-left:8px">3 UARTs — FC + MTF-02P + TF-Luna/TFMini (default)</span></div>
+        <div class="card" style="padding:10px 14px"><span class="sb">Sensor B</span> <span style="color:#374151;margin-left:8px">2 UARTs — FC + MTF-02P (VL53L3CX uses I2C)</span></div>
       </div>
     </div>
   </div>
@@ -446,26 +447,26 @@ sudo reboot</pre>
     <div>
       <h3 style="margin-top:0">Step 4 — Enable interfaces in config.txt</h3>
       <div class="tab-bar">
-        <button class="tab-btn active" onclick="switchTab(this,'sa')">Sensor A (I2C)</button>
-        <button class="tab-btn" onclick="switchTab(this,'sb')">Sensor B (UART)</button>
+        <button class="tab-btn active" onclick="switchTab(this,'sa')">Sensor A (UART)</button>
+        <button class="tab-btn" onclick="switchTab(this,'sb')">Sensor B (I2C)</button>
       </div>
       <div id="sa" class="tab-panel active" style="margin-top:10px">
         <div class="code-block">
           <div class="code-header"><span class="code-lang">/boot/firmware/config.txt</span><button class="copy-btn" onclick="cc(this)">Copy</button></div>
           <pre>enable_uart=1         <span class="cm"># UART0 — ArduPilot FC</span>
-dtparam=i2c_arm=on    <span class="cm"># I2C — VL53L3CX</span>
-dtoverlay=uart3       <span class="cm"># UART3 — MTF-02P</span></pre>
+dtoverlay=uart3       <span class="cm"># UART3 — MTF-02P optical flow</span>
+dtoverlay=uart4       <span class="cm"># UART4 — TF-Luna/TFMini</span></pre>
         </div>
-        <p style="font-size:12.5px;color:#475569">After reboot verify: <code>sudo i2cdetect -y 1</code> → expect <code>0x29</code></p>
+        <p style="font-size:12.5px;color:#475569">Use any free overlay UARTs. Verify pins with <code>pinctrl -p</code> after reboot. Run <code>pinout</code> to match GPIO numbers to physical pin positions on the header.</p>
       </div>
       <div id="sb" class="tab-panel" style="margin-top:10px">
         <div class="code-block">
           <div class="code-header"><span class="code-lang">/boot/firmware/config.txt</span><button class="copy-btn" onclick="cc(this)">Copy</button></div>
           <pre>enable_uart=1         <span class="cm"># UART0 — ArduPilot FC</span>
-dtoverlay=uart3       <span class="cm"># UART3 — MTF-02P</span>
-dtoverlay=uart4       <span class="cm"># UART4 — TF sensor</span></pre>
+dtoverlay=uart3       <span class="cm"># UART3 — MTF-02P optical flow</span>
+dtparam=i2c_arm=on    <span class="cm"># I2C — VL53L3CX</span></pre>
         </div>
-        <p style="font-size:12.5px;color:#475569">Use any free overlay UART (uart1–uart5). Always verify pins with <code>pinctrl -p</code> after reboot.</p>
+        <p style="font-size:12.5px;color:#475569">After reboot verify: <code>sudo i2cdetect -y 1</code> → expect <code>0x29</code></p>
       </div>
 
       <h3 style="margin-top:14px">Step 5 — Dialout group</h3>
@@ -480,17 +481,17 @@ groups   <span class="cm"># expected output includes: dialout</span></pre>
       <div class="code-block">
         <div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="cc(this)">Copy</button></div>
         <pre>ls -l /dev/ttyAMA*
-<span class="cm"># Cross-reference with: pinctrl -p</span></pre>
+<span class="cm"># Cross-reference GPIO numbers: pinctrl -p   then   pinout</span></pre>
       </div>
       <div class="code-block">
         <div class="code-header"><span class="code-lang">config.json</span><button class="copy-btn" onclick="cc(this)">Copy</button></div>
-        <pre>"mavlink_uart": "/dev/ttyAMAx",
-"sensor_uart":  "/dev/ttyAMAy"</pre>
+        <pre>"mavlink_uart": "/dev/ttyAMA0",
+"tf_sensor": { "uart": "/dev/ttyAMAx" }</pre>
       </div>
 
       <div class="callout tip">
         <span class="icon">💡</span>
-        <div><code>pinctrl -p</code> shows live GPIO state. Pins will change from <code>no … = none</code> to an alternate function like <code>TXD0</code> or <code>SDA1</code> after enabling interfaces.</div>
+        <div><code>pinctrl -p</code> shows live GPIO state — pins change from <code>no … = none</code> to an alternate function like <code>TXD0</code> or <code>SDA1</code> after enabling interfaces. Run <code>pinout</code> to map GPIO numbers to physical pin numbers on the 40-pin header.</div>
       </div>
     </div>
   </div>
@@ -519,11 +520,11 @@ groups   <span class="cm"># expected output includes: dialout</span></pre>
       <div class="code-block">
         <div class="code-header"><span class="code-lang">json</span><button class="copy-btn" onclick="cc(this)">Copy</button></div>
         <pre>"mission": {
-  "mavlink_uart": "/dev/ttyAMAx",
-  "sensor_uart":  "/dev/ttyAMAy",
+  "mavlink_uart": "/dev/ttyAMA0",
   "pump_gpio_pin": &lt;BCM pin&gt;
 },
 "range_sensor": { "type": "a" },
+"tf_sensor": { "uart": "/dev/ttyAMAx" },
 "wiper": { "wiper_gpio_pin": &lt;BCM pin&gt; }</pre>
       </div>
     </div>
@@ -544,19 +545,14 @@ python main.py --model yolo</pre></div>
         </div>
         <div class="card" style="padding:11px 14px">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px"><strong style="font-size:13px">Step 3 — Range sensor</strong></div>
-          <div class="code-block" style="margin:0"><div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="cc(this)">Copy</button></div><pre><span class="cm"># Sensor A:</span>  python sensor_range_test.py
-<span class="cm"># Sensor B:</span>  python sensor_tf_test.py</pre></div>
+          <div class="code-block" style="margin:0"><div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="cc(this)">Copy</button></div><pre><span class="cm"># Sensor A (default):</span>  python sensor_tf_test.py
+<span class="cm"># Sensor B:</span>           python sensor_tf_i2c_test.py</pre></div>
           <div style="font-size:12px;color:#64748b;margin-top:5px">Expected: <code>0.452 m  (45.2 cm)</code></div>
         </div>
         <div class="card" style="padding:11px 14px">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px"><strong style="font-size:13px">Step 4 — Optical flow</strong></div>
-          <div class="code-block" style="margin:0"><div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="cc(this)">Copy</button></div><pre>python sensor_flow_test.py</pre></div>
-          <div style="font-size:12px;color:#64748b;margin-top:5px">Expected: <code>flow_x=0.012  flow_y=-0.003  quality=210</code></div>
-        </div>
-        <div class="card" style="padding:11px 14px">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px"><strong style="font-size:13px">Step 5 — Range + OCR together</strong></div>
-          <div class="code-block" style="margin:0"><div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="cc(this)">Copy</button></div><pre><span class="cm"># Sensor A:</span>  python sensor_ocr_test.py
-<span class="cm"># Sensor B:</span>  python sensor_ocr_test.py --sensor b --uart /dev/ttyAMAx</pre></div>
+          <div class="code-block" style="margin:0"><div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="cc(this)">Copy</button></div><pre><span class="cm"># Sensor A (default):</span>  python sensor_ocr_test.py
+<span class="cm"># Sensor B:</span>           python sensor_ocr_test.py --sensor b</pre></div>
         </div>
       </div>
     </div>
@@ -955,8 +951,6 @@ unzip best_ncnn_model.zip -d best_ncnn_model</pre>
         <tbody>
           <tr><td><code>mavlink_uart</code></td><td><span class="badge bw">null ⚠</span></td><td>UART to ArduPilot FC — confirm with <code>ls -l /dev/ttyAMA*</code></td></tr>
           <tr><td><code>mavlink_baud</code></td><td><code>57600</code></td><td>Must match ArduPilot SERIALx_BAUD</td></tr>
-          <tr><td><code>sensor_uart</code></td><td><span class="badge bw">null ⚠</span></td><td>UART to MTF-02P — confirm with <code>ls -l /dev/ttyAMA*</code></td></tr>
-          <tr><td><code>sensor_baud</code></td><td><code>115200</code></td><td>MTF-02P baud rate — fixed by hardware, do not change</td></tr>
           <tr><td><code>takeoff_altitude_m</code></td><td><code>1.5</code></td><td>Hover altitude in metres after arming</td></tr>
           <tr><td><code>scan_yaw_rate_dps</code></td><td><code>20.0</code></td><td>Yaw spin speed during scan (deg/s). 20 = one rotation in 18 s</td></tr>
           <tr><td><code>scan_timeout_s</code></td><td><code>60.0</code></td><td>Abort scan and RTL if no board found within this time</td></tr>
@@ -978,16 +972,16 @@ unzip best_ncnn_model.zip -d best_ncnn_model</pre>
       <table class="dep-table">
         <thead><tr><th>Key</th><th>Default</th><th>Description</th></tr></thead>
         <tbody>
-          <tr><td><code>range_sensor.type</code></td><td><code>"a"</code></td><td><code>"a"</code> = VL53L3CX I2C (sensor A, default) · <code>"b"</code> = TF-Luna/TFMini UART (sensor B)</td></tr>
-          <tr><td><code>range_sensor.i2c_address</code></td><td><code>41</code></td><td>I2C address as decimal integer. 0x29 = 41. Change only if XSHUT remapped it</td></tr>
-          <tr><td><code>range_sensor.timing_budget_ms</code></td><td><code>50</code></td><td><strong>Sensor A only.</strong> VL53L4CD measurement interval (10–200 ms). Lower = faster but noisier</td></tr>
-          <tr><td><code>tf_sensor.uart</code></td><td><span class="badge bw">null</span></td><td><strong>Sensor B only.</strong> UART path for TF-Luna/TFMini (e.g. <code>/dev/ttyAMA4</code>)</td></tr>
-          <tr><td><code>tf_sensor.baud</code></td><td><code>115200</code></td><td><strong>Sensor B only.</strong> TF sensor baud rate — fixed by hardware</td></tr>
+          <tr><td><code>range_sensor.type</code></td><td><code>"a"</code></td><td><code>"a"</code> = TF-Luna/TFMini UART (sensor A, default) · <code>"b"</code> = VL53L3CX I2C (sensor B)</td></tr>
+          <tr><td><code>range_sensor.i2c_address</code></td><td><code>41</code></td><td><strong>Sensor B only.</strong> I2C address as decimal. 0x29 = 41. Change only if XSHUT remapped it</td></tr>
+          <tr><td><code>range_sensor.timing_budget_ms</code></td><td><code>50</code></td><td><strong>Sensor B only.</strong> VL53L4CD measurement interval (10–200 ms). Lower = faster but noisier</td></tr>
+          <tr><td><code>tf_sensor.uart</code></td><td><span class="badge bw">null ⚠</span></td><td><strong>Sensor A — required.</strong> UART path for TF-Luna/TFMini. Run <code>ls -l /dev/ttyAMA*</code> — number matches <code>dtoverlay=uartX</code></td></tr>
+          <tr><td><code>tf_sensor.baud</code></td><td><code>115200</code></td><td><strong>Sensor A.</strong> TF sensor baud rate — fixed by hardware, do not change</td></tr>
         </tbody>
       </table>
       <div class="callout info" style="margin-top:12px;max-width:600px">
         <span class="icon">ℹ️</span>
-        <div>Verify sensor A before running: <code>sudo i2cdetect -y 1</code> → expect <code>0x29</code> at address 41.</div>
+        <div>Verify sensor B before running: <code>sudo i2cdetect -y 1</code> → expect <code>0x29</code> at address 41.</div>
       </div>
     </div>
 
@@ -1066,14 +1060,13 @@ Camera → BGR frame
 │           Raspberry Pi 5                │
 │                                         │
 │  IMX708 Camera     →  YOLO / OCR        │
-│  MTF-02P (UART)    →  optical flow      │
-│  VL53L3CX (I2C)    →  forward range (A) │
-│  TF-Luna  (UART)   →  forward range (B) │
+│  TF-Luna  (UART)   →  forward range (A) │
+│  VL53L3CX (I2C)    →  forward range (B) │
 │  Mission state machine                  │
 │  GPIO pump pin     →  pump relay        │
 │  GPIO wiper pin    →  wiper arm         │
 │                                         │
-│  DroneKit (MAVLink over UART)           │
+│  pymavlink (MAVLink over UART)           │
 └──────────────┬──────────────────────────┘</span>
                │ <span class="ua">UART — MAVLink</span>
 <span class="fc">┌──────────────▼──────────────────────────┐
@@ -1081,6 +1074,7 @@ Camera → BGR frame
 │  Attitude stabilisation (own IMU)       │
 │  Motor control                          │
 │  GUIDED mode — velocity targets         │
+│  MTF-02P (UART)    →  optical flow/EKF  │
 └─────────────────────────────────────────┘</span></div>
 
       <h3>UART interfaces</h3>
@@ -1088,15 +1082,14 @@ Camera → BGR frame
         <div class="code-header"><span class="code-lang">/boot/firmware/config.txt</span></div>
         <pre><span class="cm"># UART0 — ArduPilot FC (always required)</span>
 enable_uart=1
-
 <span class="cm"># MTF-02P optical flow (always required)</span>
-dtoverlay=uart3
+dtoverlay=uart3   <span class="cm"># any free overlay UART</span>
 
-<span class="cm"># Sensor A — VL53L3CX (I2C)</span>
-dtparam=i2c_arm=on
+<span class="cm"># Sensor A — TF-Luna/TFMini (UART, default)</span>
+dtoverlay=uart4   <span class="cm"># any free overlay UART</span>
 
-<span class="cm"># Sensor B — TF-Luna/TFMini (UART, alt.)</span>
-dtoverlay=uart4   <span class="cm"># instead of i2c_arm=on</span></pre>
+<span class="cm"># Sensor B — VL53L3CX (I2C, alternative to Sensor A)</span>
+dtparam=i2c_arm=on   <span class="cm"># instead of dtoverlay</span></pre>
       </div>
 
       <h3>All CLI flags</h3>

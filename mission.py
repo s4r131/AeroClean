@@ -17,7 +17,6 @@ Subsystems wired together here:
     Camera (camera.py)            — frame capture
     YOLOModel (yolo_model.py)     — dirty_board detection
     MAVLinkController             — ArduPilot GUIDED mode commands
-    SensorReader                  — MTF-02P range + optical flow
     RangeSensor / TFRangeSensor   — forward range (type set by range_sensor.type in config.json)
     Pump                          — GPIO spray mechanism
     Wiper                         — servo-driven stick + wipe arm
@@ -38,7 +37,7 @@ import cv2
 from camera import Camera
 from mavlink_controller import MAVLinkController
 from pump import Pump
-from sensors import RangeSensor, SensorReader, TFRangeSensor
+from sensors import RangeSensor, TFRangeSensor
 from wiper import Wiper
 from yolo_model import YOLOModel
 
@@ -79,7 +78,6 @@ class Mission:
         # Fail early with clear messages for unassigned hardware
         _required = {
             "mavlink_uart":  "UART port to ArduPilot FC (e.g. /dev/ttyAMA0)",
-            "sensor_uart":   "UART port to MTF-02P sensor (e.g. /dev/ttyAMA2)",
         }
         missing = [f"  mission.{k}  —  {desc}" for k, desc in _required.items() if m.get(k) is None]
         if missing:
@@ -115,7 +113,6 @@ class Mission:
         self._camera     = Camera(config_path)
         self._yolo       = YOLOModel(config_path)
         self._controller = MAVLinkController(m["mavlink_uart"], int(m["mavlink_baud"]))
-        self._sensors    = SensorReader(m["sensor_uart"], int(m["sensor_baud"]))
         self._range      = self._init_range_sensor(cfg)
         pump_pin = m.get("pump_gpio_pin")
         self._pump       = Pump(int(pump_pin) if pump_pin is not None else None)
@@ -177,7 +174,6 @@ class Mission:
         print("[MISSION] Starting up")
         try:
             self._camera.start()
-            self._sensors.start()
             self._range.start()
             self._controller.connect()
 
@@ -400,10 +396,6 @@ class Mission:
             pass
         try:
             self._wiper.cleanup()
-        except Exception:
-            pass
-        try:
-            self._sensors.stop()
         except Exception:
             pass
         try:

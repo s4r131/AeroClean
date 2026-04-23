@@ -7,8 +7,8 @@ Shows an OpenCV window with:
   - Status banner: DIRTY + distance in red, or CLEAN in green
 
 Two range sensor options:
-  --sensor a  TF-Luna / TFMini (UART, default) — reads uart/baud from config.json tf_sensor
-  --sensor b  VL53L3CX (I2C) — reads i2c_address from config.json range_sensor
+  --sensor a  TF-Luna / TFMini (UART, default) — reads tf_sensor.uart from config.json
+  --sensor b  VL53L3CX (I2C) — reads range_sensor.i2c_address from config.json
 
 Usage:
     python sensor_ocr_test.py                              # sensor A (TF-Luna), Pi camera
@@ -49,12 +49,12 @@ def _build_parser() -> argparse.ArgumentParser:
             "  - Confirm the OCR pipeline and range sensor work together correctly\n"
             "  - Verify distance readings appear on screen when a dirty board is detected\n"
             "  - Test with a saved image or video before connecting live hardware\n"
-            "  - Compare sensor A (I2C) vs sensor B (UART) in a real scenario\n"
+            "  - Compare sensor A (UART) vs sensor B (I2C) in a real scenario\n"
             "\n"
             "Troubleshooting:\n"
             "  No distance shown    →  check sensor wiring and run the sensor test script first\n"
             "  OCR never triggers   →  write the word 'dirty' on the board in clear marker\n"
-            "  Sensor B not found   →  set tf_sensor.uart in config.json first\n"
+            "  Sensor A not found   →  set tf_sensor.uart in config.json first\n"
         ),
         formatter_class=argparse.RawTextHelpFormatter,
     )
@@ -74,9 +74,9 @@ def _build_parser() -> argparse.ArgumentParser:
         "--sensor", choices=["a", "b"], default="a",
         help=(
             "Which range sensor to use:\n"
-            "  a  VL53L3CX over I2C (default) — reads range_sensor.i2c_address from config.json\n"
-            "  b  TF-Luna / TFMini over UART  — reads tf_sensor.uart from config.json\n"
-            "Run sensor_range_test.py or sensor_tf_test.py first to confirm the sensor works."
+            "  a  TF-Luna / TFMini over UART (default) — reads tf_sensor.uart from config.json\n"
+            "  b  VL53L3CX over I2C — reads range_sensor.i2c_address from config.json\n"
+            "Run sensor_tf_test.py (A) or sensor_tf_i2c_test.py (B) first to confirm the sensor works."
         ),
     )
     return p
@@ -163,7 +163,7 @@ def main() -> None:
     with open(args.config) as f:
         cfg = json.load(f)
 
-    if args.sensor == "b":
+    if args.sensor == "a":
         tf_cfg = cfg.get("tf_sensor", {})
         uart = tf_cfg.get("uart")
         if not uart:
@@ -173,12 +173,12 @@ def main() -> None:
                 "  Then set it in config.json:  \"tf_sensor\": { \"uart\": \"/dev/ttyAMAx\" }"
             )
         sensor = TFRangeSensor(uart, baud=tf_cfg.get("baud", 115200))
-        print(f"[TEST] Using sensor B — TF-Luna/TFMini on {uart}")
+        print(f"[TEST] Using sensor A — TF-Luna/TFMini on {uart}")
     else:
         range_cfg     = cfg.get("range_sensor", {})
         timing_budget = int(range_cfg.get("timing_budget_ms", 50))
         sensor = RangeSensor(range_cfg.get("i2c_address", 0x29), timing_budget_ms=timing_budget)
-        print("[TEST] Using sensor A — VL53L3CX (I2C)")
+        print("[TEST] Using sensor B — VL53L3CX (I2C)")
     sensor.start()
 
     ocr = OCRModel(config_path=args.config)
