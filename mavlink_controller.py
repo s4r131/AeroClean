@@ -181,6 +181,35 @@ class MAVLinkController:
     # Arming and takeoff
     # ─────────────────────────────────────────────────────────────────────────
 
+    def arm(self) -> None:
+        """Switch to GUIDED and arm. Does not take off."""
+        print("[FC] Setting GUIDED mode")
+        self._set_mode(_GUIDED_MODE)
+        self._wait_for_mode(_GUIDED_MODE)
+        print("[FC] GUIDED mode confirmed")
+
+        print("[FC] Arming...")
+        deadline = time.monotonic() + _ARM_TIMEOUT_S
+        while True:
+            with self._lock:
+                if self._armed:
+                    break
+            if time.monotonic() > deadline:
+                raise RuntimeError(
+                    f"Vehicle did not arm within {_ARM_TIMEOUT_S:.0f}s — "
+                    "check pre-arm conditions on the FC."
+                )
+            self._conn.mav.command_long_send(
+                self._conn.target_system,
+                self._conn.target_component,
+                mavutil.mavlink.MAV_CMD_COMPONENT_ARM_DISARM,
+                0,
+                1,       # 1 = arm
+                0, 0, 0, 0, 0, 0,
+            )
+            time.sleep(0.5)
+        print("[FC] Armed")
+
     def arm_and_takeoff(self, altitude_m: float) -> None:
         """
         Switch to GUIDED, arm, take off, and block until altitude_m is reached.
@@ -335,3 +364,14 @@ class MAVLinkController:
                 and self._alt_m < 0.1
                 and not self._armed
             )
+
+    def is_armed(self) -> bool:
+        """True when the vehicle is armed. Updated from HEARTBEAT messages."""
+        with self._lock:
+            return self._armed
+
+    def get_mode(self) -> int:
+        """Current ArduCopter custom mode number (-1 until first heartbeat).
+        Common values: 0=STABILIZE, 4=GUIDED, 6=RTL."""
+        with self._lock:
+            return self._custom_mode
