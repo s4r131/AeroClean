@@ -68,14 +68,17 @@ def main() -> None:
     print(f"[RANGE TEST] Sensor started at I2C address 0x{i2c_address:02X}")
     print("[RANGE TEST] Reading distance — Ctrl+C to stop\n")
 
+    last_dist_cm = None
+
     try:
         while True:
             dist = sensor.get_distance()
-            if dist is None:
-                print("[RANGE TEST] Waiting for first reading...")
-            else:
-                print(f"[RANGE TEST] {dist:.3f} m  ({dist * 100:.1f} cm)")
-            time.sleep(0.5)
+            if dist is not None:
+                dist_cm = round(dist * 100, 1)
+                if dist_cm != last_dist_cm:
+                    print(f"[RANGE TEST] {dist:.3f} m  ({dist_cm:.1f} cm)")
+                    last_dist_cm = dist_cm
+            time.sleep(0.1)
     except KeyboardInterrupt:
         print("\n[RANGE TEST] Stopped.")
     finally:

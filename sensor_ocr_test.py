@@ -7,7 +7,7 @@ Shows an OpenCV window with:
   - Status banner: DIRTY + distance in red, or CLEAN in green
 
 Two range sensor options:
-  --sensor a  TF-Luna / TFMini (UART, default) — reads tf_sensor.uart from config.json
+  --sensor a  TF-Luna / TFMini (UART, default) — reads range_sensor.uart from config.json
   --sensor b  VL53L3CX (I2C) — reads range_sensor.i2c_address from config.json
 
 Usage:
@@ -54,7 +54,7 @@ def _build_parser() -> argparse.ArgumentParser:
             "Troubleshooting:\n"
             "  No distance shown    →  check sensor wiring and run the sensor test script first\n"
             "  OCR never triggers   →  write the word 'dirty' on the board in clear marker\n"
-            "  Sensor A not found   →  set tf_sensor.uart in config.json first\n"
+            "  Sensor A not found   →  set range_sensor.uart in config.json first\n"
         ),
         formatter_class=argparse.RawTextHelpFormatter,
     )
@@ -74,7 +74,7 @@ def _build_parser() -> argparse.ArgumentParser:
         "--sensor", choices=["a", "b"], default="a",
         help=(
             "Which range sensor to use:\n"
-            "  a  TF-Luna / TFMini over UART (default) — reads tf_sensor.uart from config.json\n"
+            "  a  TF-Luna / TFMini over UART (default) — reads range_sensor.uart from config.json\n"
             "  b  VL53L3CX over I2C — reads range_sensor.i2c_address from config.json\n"
             "Run sensor_tf_test.py (A) or sensor_tf_i2c_test.py (B) first to confirm the sensor works."
         ),
@@ -164,13 +164,13 @@ def main() -> None:
         cfg = json.load(f)
 
     if args.sensor == "a":
-        tf_cfg = cfg.get("tf_sensor", {})
+        tf_cfg = cfg.get("range_sensor", {})
         uart = tf_cfg.get("uart")
         if not uart:
             _build_parser().error(
-                "tf_sensor.uart is not set in config.json.\n"
+                "range_sensor.uart is not set in config.json.\n"
                 "  Find your device path with: ls -l /dev/ttyAMA*\n"
-                "  Then set it in config.json:  \"tf_sensor\": { \"uart\": \"/dev/ttyAMAx\" }"
+                "  Then set it in config.json:  \"range_sensor\": { \"uart\": \"/dev/ttyAMAx\" }"
             )
         sensor = TFRangeSensor(uart, baud=tf_cfg.get("baud", 115200))
         print(f"[TEST] Using sensor A — TF-Luna/TFMini on {uart}")
@@ -188,6 +188,9 @@ def main() -> None:
     cv2.namedWindow("AeroClean — Sensor+OCR Test", cv2.WINDOW_NORMAL)
     print("[TEST] Running. Press  q  to quit.")
 
+    prev_dirty    = None
+    last_dist_cm  = None
+
     try:
         for frame in frames:
             dirty, annotated = ocr.run(frame)
@@ -195,8 +198,19 @@ def main() -> None:
             dist: float | None = None
             if dirty:
                 dist = sensor.get_distance()
-                dist_str = f"{dist:.3f}m" if dist is not None else "waiting"
-                print(f"[TEST] DIRTY detected — range={dist_str}")
+
+            state_changed = dirty != prev_dirty
+            dist_cm       = None if dist is None else round(dist * 100, 1)
+            dist_changed  = dirty and (dist_cm != last_dist_cm)
+
+            if state_changed or dist_changed:
+                if dirty:
+                    dist_str = f"{dist:.3f}m" if dist is not None else "waiting"
+                    print(f"[TEST] DIRTY detected — range={dist_str}")
+                else:
+                    print("[TEST] CLEAN")
+                prev_dirty   = dirty
+                last_dist_cm = dist_cm
 
             _draw_banner(annotated, dirty, dist)
             if dirty:

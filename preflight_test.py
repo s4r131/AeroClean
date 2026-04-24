@@ -10,7 +10,7 @@ No MAVLink, no arming, no drone movement. Safe to run on a bench.
 
 Prerequisites:
     config.json configured:
-        tf_sensor.uart              — UART path for TF-Luna / TFMini
+        range_sensor.uart              — UART path for TF-Luna / TFMini
         mission.pump_gpio_pin       — BCM GPIO pin for pump relay
         wiper.wiper_gpio_pin        — BCM GPIO pin for wiper relay
         mission.approach_stop_dist_m — trigger distance in metres
@@ -199,7 +199,7 @@ def main() -> None:
     display    = bool(cfg.get("display", True))
     output_dir = str(cfg.get("output_dir", "output"))
 
-    tf_cfg      = cfg.get("tf_sensor", {})
+    tf_cfg      = cfg.get("range_sensor", {})
     mission_cfg = cfg.get("mission", {})
     w_cfg       = cfg.get("wiper", {})
 
@@ -208,9 +208,9 @@ def main() -> None:
 
     if tf_port is None:
         _build_parser().error(
-            "tf_sensor.uart is not set in config.json.\n"
+            "range_sensor.uart is not set in config.json.\n"
             "  Find your device path with: ls -l /dev/ttyAMA*\n"
-            "  Then set it: \"tf_sensor\": { \"uart\": \"/dev/ttyAMAx\" }"
+            "  Then set it: \"range_sensor\": { \"uart\": \"/dev/ttyAMAx\" }"
         )
 
     pump_pin = mission_cfg.get("pump_gpio_pin")
@@ -247,7 +247,9 @@ def main() -> None:
 
     frames      = _frames_from_file(args.source) if args.source else _frames_from_camera(args.config)
     window_name = f"AeroClean — Preflight ({args.model.upper()})"
-    prev_dirty  = False
+    prev_dirty      = False
+    prev_within     = None
+    last_dist_cm    = None
 
     try:
         if display:
@@ -259,10 +261,18 @@ def main() -> None:
 
             dist_m           = tf_sensor.get_distance()
             within_threshold = dist_m is not None and dist_m <= distance_threshold_m
+            dist_cm          = None if dist_m is None else round(dist_m * 100, 1)
 
-            status_str = "DIRTY" if dirty else "CLEAN"
-            dist_str   = f"{dist_m:.2f} m" if dist_m is not None else "waiting..."
-            print(f"[{args.model.upper()}] {status_str}   [TF] {dist_str}")
+            state_changed = dirty != prev_dirty
+            range_changed = within_threshold != prev_within
+            dist_changed  = dist_cm != last_dist_cm
+
+            if state_changed or range_changed or dist_changed:
+                status_str = "DIRTY" if dirty else "CLEAN"
+                dist_str   = f"{dist_m:.2f} m" if dist_m is not None else "waiting..."
+                print(f"[{args.model.upper()}] {status_str}   [TF] {dist_str}")
+                prev_within  = within_threshold
+                last_dist_cm = dist_cm
 
             if dirty and within_threshold and not prev_dirty:
                 trigger.trigger_async()

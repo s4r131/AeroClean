@@ -90,7 +90,7 @@ AeroClean/
 | **Camera connection** | CSI ribbon cable (included with Camera Module 3) |
 | **Flight controller** | ArduPilot-compatible FC (e.g. Pixhawk) — connected to Pi via UART (confirm path with `ls -l /dev/ttyAMA*`) |
 | **Flow sensor** | MicoAir MTF-02P optical flow sensor — connected to the FC optical flow UART port (not the Pi) |
-| **Range sensor** | **Sensor A (default):** TF-Luna / TFMini — UART (set `tf_sensor.uart` in config.json)  **or  Sensor B:** VL53L3CX ToF — I2C, GPIO 2/3 (pins 3/5), 3 m range (set `range_sensor.type = "b"`) |
+| **Range sensor** | **Sensor A (default):** TF-Luna / TFMini — UART (set `range_sensor.uart` in config.json)  **or  Sensor B:** VL53L3CX ToF — I2C, GPIO 2/3 (pins 3/5), 3 m range (set `range_sensor.type = "b"`) |
 | **Pump** | Relay-driven pump on BCM GPIO pin (configurable in `config.json`) |
 | **Wiper** | Wiper arm on BCM GPIO pin — actuator type TBD (configurable in `config.json`) |
 | **OS** | Raspberry Pi OS Bookworm (64-bit) — December 2023 or later |
@@ -219,7 +219,7 @@ You should see `main.py`, `config.json`, `requirements.txt`, and the rest of the
 A virtual environment is an isolated Python workspace. It keeps AeroClean's packages separate from the rest of the Pi — this prevents version conflicts and makes the project self-contained.
 
 ```bash
-python3 -m venv aeroclean_env
+python3 -m venv aeroclean_env --system-site-packages
 source aeroclean_env/bin/activate
 ```
 
@@ -248,13 +248,45 @@ This installs everything the project needs — pymavlink, Ultralytics YOLO, the 
 
 > ✓ **Before continuing:** the install should finish without any `ERROR` lines. Warnings are fine.
 
-### 3. Enable hardware interfaces (camera, UART and I2C)
+#### 2e — Add your user to the dialout group
 
-The Pi's camera, UART, and I2C interfaces must be explicitly enabled by editing `/boot/firmware/config.txt` and rebooting. Without this, the camera, sensors, and flight controller will not be detected at all.
+Without this, any attempt to read `/dev/ttyAMA*` or open a MAVLink connection will fail with `Permission denied`.
 
-After each change below, reboot and use `pinctrl -p` to confirm GPIO-mapped interfaces are active. The camera uses a dedicated CSI connector (not the GPIO header), so `pinctrl -p` will not show a change for it — use `libcamera-hello --list-cameras` instead.
+```bash
+sudo usermod -aG dialout $USER
+```
+
+Log out and back in (or reboot) for the group change to take effect. Verify:
+```bash
+groups
+```
+The output should include `dialout`.
+
+> ✓ **Before continuing:** confirm `dialout` appears in the `groups` output above.
+
+On Pi OS Trixie, `/dev/ttyAMA*` devices are owned `root:root` by default — `dialout` group membership alone is not enough. Add a udev rule to permanently set the group to `dialout` for all UART devices:
+
+```bash
+echo 'KERNEL=="ttyAMA[0-9]*", GROUP="dialout", MODE="0660"' | sudo tee /etc/udev/rules.d/99-ttyama.rules
+sudo udevadm control --reload-rules
+sudo udevadm trigger
+```
+
+Verify the rule has applied:
+```bash
+ls -la /dev/ttyAMA*
+```
+Expected — the group column should now show `dialout`:
+```
+crw-rw---- 1 root dialout 204, 64 ... /dev/ttyAMA0
+```
+If it still shows `root root`, reboot and check again.
+
+> ✓ **Before continuing:** confirm `dialout` appears as the group in `ls -la /dev/ttyAMA*`.
 
 ---
+
+### 3. Enable hardware interfaces (camera, UART and I2C)
 
 #### Reading `pinctrl -p`
 
@@ -311,7 +343,7 @@ The `no ... = none` pattern means the pin is sitting idle with no peripheral att
 
 #### Sub-step 0 — Enable the IMX708 camera
 
-> **Do this first.** The camera must be configured in `config.txt` before `libcamera-hello` or `camera_test.py` can detect it.
+> **Do this first.** The camera must be configured in `config.txt` before `rpicam-hello --list-cameras` or `camera_test.py` can detect it.
 
 Open the config file:
 ```bash
@@ -347,11 +379,11 @@ source aeroclean_env/bin/activate
 
 Verify the camera is detected:
 ```bash
-libcamera-hello --list-cameras
+rpicam-hello --list-cameras
 ```
 Expected output contains `IMX708`. If the camera is not listed, recheck the CSI ribbon cable and that the overlay line was saved correctly.
 
-> ✓ **Before continuing:** confirm `IMX708` appears in the `libcamera-hello` output above.
+> ✓ **Before continuing:** confirm `IMX708` appears in the `rpicam-hello` output above.
 
 ---
 
@@ -395,7 +427,15 @@ Then confirm the device is present:
 ls -l /dev/ttyAMA*
 ```
 
-Note the path for the ArduPilot FC sensor — it goes into `config.json → mission.mavlink_uart` (section `_s8`).
+Note the path for the ArduPilot FC — now put it in config.json:
+```bash
+sudo nano config.json
+```
+Find the `mission` block (`_s7`) and set:
+```json
+"mavlink_uart": "/dev/ttyAMA0"
+```
+Replace `/dev/ttyAMA0` with the actual path from `ls -l /dev/ttyAMA*` above. Save: `Ctrl+X` → `Y` → `Enter`.
 
 ---
 
@@ -437,7 +477,15 @@ Then list all available UARTs:
 ```bash
 ls -l /dev/ttyAMA*
 ```
-`dtoverlay=uartX` creates a new `/dev/ttyAMAX` device. Note the path for the TF sensor — it goes into `config.json → tf_sensor.uart` (section `_s6`).
+`dtoverlay=uartX` creates a new `/dev/ttyAMAX` device. Note the path — now put it in config.json:
+```bash
+sudo nano config.json
+```
+Find the `range_sensor` block (`_s5`) and set:
+```json
+"uart": "/dev/ttyAMAX"
+```
+Replace `/dev/ttyAMAX` with the actual path. Save: `Ctrl+X` → `Y` → `Enter`.
 
 **Debug check — confirm the sensor is live and transmitting:**
 
@@ -495,23 +543,15 @@ Expected: `29` appears at address `0x29` in the grid. If the grid is all dashes,
 
 > ✓ **Before continuing:** confirm `29` appears in the `i2cdetect` grid above.
 
-#### Sub-step 3 — Add your user to the dialout group
-
-Without this, any attempt to read `/dev/ttyAMA*` or open a MAVLink connection will fail with `Permission denied`.
-
+Now update config.json to select sensor B:
 ```bash
-sudo usermod -aG dialout $USER
+sudo nano config.json
 ```
-
-Log out and back in (or reboot) for the group change to take effect. Verify:
-```bash
-groups
+Find the `range_sensor` block (`_s5`) and confirm:
+```json
+"type": "b"
 ```
-The output should include `dialout`.
-
-> ✓ **Before continuing:** confirm `dialout` appears in the `groups` output above.
-
----
+Save: `Ctrl+X` → `Y` → `Enter`.
 
 #### Verified `/boot/firmware/config.txt`
 
@@ -580,7 +620,7 @@ Expected:
 ```
 [TF TEST] 0.452 m  (45.2 cm)  | strength=412  | temp=32.1 C
 ```
-Requires `tf_sensor.uart` to be set in `config.json` first — the script will error clearly if it is not.
+Requires `range_sensor.uart` to be set in `config.json` first — the script will error clearly if it is not.
 
 **Option B — VL53L3CX (I2C):**
 ```bash

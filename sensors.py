@@ -15,6 +15,14 @@ from __future__ import annotations
 import threading
 import time
 
+"""
+Three libraries required for the VL53L3CX (sensor B, I2C):
+  board             — knows the Pi's physical pin layout (board.SCL / board.SDA gives the correct GPIO pins)
+  busio             — opens the I2C bus on those pins so the sensor can communicate
+  adafruit_vl53l4cd — the sensor driver; hides all low-level register reads, exposes a simple .distance property
+All three are Pi-only. The try statement below sets the flag to False if any are missing so this
+file can be imported on a dev machine without crashing — the sensor just runs as a no-op.
+"""
 try:
     import board
     import busio
@@ -23,6 +31,13 @@ try:
 except ImportError:
     ADAFRUIT_VL53_AVAILABLE = False
 
+"""
+One library required for the TF-Luna / TFMini (sensor A, UART):
+  serial (pyserial) — opens and reads from the UART serial port on the Pi.
+                      Aliased to _serial to avoid clashing with Python's own serial namespace.
+Pi-only in practice. The try statement below sets the flag to False if it is missing so this
+file can be imported on a dev machine without crashing — the sensor just runs as a no-op.
+"""
 try:
     import serial as _serial
     SERIAL_AVAILABLE = True
@@ -32,24 +47,9 @@ except ImportError:
 
 class RangeSensor:
     """
-    Forward-facing VL53L3CX ToF range sensor over I2C.
-
-    The VL53L3CX is register-compatible with the VL53L4CD family.
-    Uses the adafruit-circuitpython-vl53l4cd library on the Pi's default
-    I2C bus (GPIO 3 = SDA, GPIO 5 = SCL).
-
-    Wiring:
-        VIN → Pi 3.3V (pin 1)
-        GND → Pi GND  (pin 6)
-        SDA → Pi GPIO 2 / pin 3
-        SCL → Pi GPIO 3 / pin 5
-
-    Enable I2C on the Pi before use:
-        Add dtparam=i2c_arm=on to /boot/firmware/config.txt and reboot
-    Verify with:
-        sudo i2cdetect -y 1   (should show 0x29)
-
-    Thread-safe: get_distance() may be called from any thread.
+    VL53L3CX ToF range sensor over I2C (sensor B).
+    Reads distance in a background thread and caches the latest value in metres.
+    Call get_distance() from any thread — returns the latest reading or None if no reading yet.
     """
 
     def __init__(self, i2c_address: int = 0x29, timing_budget_ms: int = 50):
@@ -81,6 +81,11 @@ class RangeSensor:
 
         try:
             i2c = busio.I2C(board.SCL, board.SDA)
+            """
+            self._sensor is an adafruit_vl53l4cd.VL53L4CD object — the Adafruit driver for the VL53L3CX.
+            Its built-in properties and methods used here: .distance (mm), .data_ready,
+            .clear_interrupt(), .timing_budget, and .start_ranging().
+            """
             self._sensor = adafruit_vl53l4cd.VL53L4CD(i2c, address=self._i2c_address)
             self._sensor.timing_budget = self._timing_budget
             self._sensor.start_ranging()
@@ -133,7 +138,6 @@ class RangeSensor:
                     self._sensor.clear_interrupt()
                     with self._lock:
                         self._latest_distance_m = dist_m
-                    print(f"[VL53L3CX] distance={dist_m:.3f}m")
                 else:
                     time.sleep(0.005)   # 5ms poll when no data ready
             except Exception as e:
@@ -143,22 +147,9 @@ class RangeSensor:
 
 class TFRangeSensor:
     """
-    Forward-facing TF-Luna / TFMini range sensor over UART.
-
-    Reads the Benewake 9-byte binary frame (0x59 0x59 header) in a
-    background daemon thread. Same public API as RangeSensor so either
-    sensor can be used interchangeably in tests and the mission.
-
-    Wiring:
-        VCC → Pi 5V  (pin 2 or 4)
-        GND → Pi GND (pin 6)
-        TX  → Pi RX  (e.g. GPIO15 / pin 10 for UART0)
-        RX  → Pi TX  (e.g. GPIO14 / pin 8  for UART0)
-
-    Enable the UART in /boot/firmware/config.txt (e.g. dtoverlay=uart3)
-    and verify with pinctrl -p before use.
-
-    Thread-safe: get_distance() may be called from any thread.
+    TF-Luna / TFMini range sensor over UART (sensor A).
+    Reads distance in a background thread and caches the latest value in metres.
+    Call get_distance() from any thread — returns the latest reading or None if no reading yet.
     """
 
     def __init__(self, uart_port: str, baud: int = 115200):
@@ -187,6 +178,11 @@ class TFRangeSensor:
             return
 
         try:
+            """
+            self._ser is a _serial.Serial object — the pyserial handle for the UART port.
+            Its built-in properties and methods used here: .read(n) (reads n bytes from the port),
+            and .close() (releases the port when the sensor stops).
+            """
             self._ser = _serial.Serial(self._uart_port, self._baud, timeout=1)
         except _serial.SerialException as e:
             print(f"[TF RANGE] Could not open {self._uart_port}: {e}")
@@ -261,7 +257,6 @@ class TFRangeSensor:
                 if dist_m is not None:
                     with self._lock:
                         self._latest_distance_m = dist_m
-                    print(f"[TF RANGE] distance={dist_m:.3f}m")
             except Exception as e:
                 print(f"[TF RANGE] Read error: {e}")
                 time.sleep(0.05)

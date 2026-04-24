@@ -157,15 +157,14 @@ class Mission:
             return RangeSensor(i2c_address, timing_budget_ms=timing_budget)
 
         # Default — sensor A
-        tf_cfg  = cfg.get("tf_sensor", {})
-        tf_uart = tf_cfg.get("uart")
+        tf_uart = range_cfg.get("uart")
         if not tf_uart:
             raise RuntimeError(
-                "range_sensor.type is 'a' (TF-Luna) but tf_sensor.uart is not set "
+                "range_sensor.type is 'a' (TF-Luna) but range_sensor.uart is not set "
                 "in config.json. Set it to the UART path for the TF sensor "
                 "(e.g. /dev/ttyAMAx)."
             )
-        tf_baud = int(tf_cfg.get("baud", 115200))
+        tf_baud = int(range_cfg.get("baud", 115200))
         print(f"[MISSION] Range sensor: TF-Luna/TFMini on {tf_uart} @ {tf_baud}")
         return TFRangeSensor(tf_uart, baud=tf_baud)
 

@@ -27,8 +27,9 @@ def main() -> None:
     print("[CAM TEST] Opening camera — press  q  to quit")
 
     frame_count = 0
-    t_start = time.monotonic()
-    t_last_print = t_start
+    t_start     = time.monotonic()
+    t_last_fps  = t_start
+    last_fps_i  = None
 
     with Camera(args.config) as cam:
         cv2.namedWindow("AeroClean — Camera Test", cv2.WINDOW_NORMAL)
@@ -38,12 +39,14 @@ def main() -> None:
             frame_count += 1
 
             now = time.monotonic()
-            elapsed = now - t_last_print
-            if elapsed >= 1.0:
-                fps = frame_count / (now - t_start)
-                h, w = frame.shape[:2]
-                print(f"[CAM TEST] {w}x{h}  {fps:.1f} FPS")
-                t_last_print = now
+            if now - t_last_fps >= 1.0:
+                fps   = frame_count / (now - t_start)
+                fps_i = int(fps)
+                if fps_i != last_fps_i:
+                    h, w = frame.shape[:2]
+                    print(f"[CAM TEST] {w}x{h}  {fps:.1f} FPS")
+                    last_fps_i = fps_i
+                t_last_fps = now
 
             cv2.imshow("AeroClean — Camera Test", frame)
 

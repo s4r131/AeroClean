@@ -18,7 +18,7 @@ Usage:
     python sensor_tf_test.py --config config.json
     Ctrl+C to stop.
 
-Requires tf_sensor.uart to be set in config.json before running.
+Requires range_sensor.uart to be set in config.json before running.
 """
 
 from __future__ import annotations
@@ -97,8 +97,8 @@ def main() -> None:
         "--config", default="config.json",
         help=(
             "Path to config.json (default: config.json).\n"
-            "Must contain tf_sensor.uart set to your UART device path,\n"
-            "e.g.  \"tf_sensor\": { \"uart\": \"/dev/ttyAMA3\" }"
+            "Must contain range_sensor.uart set to your UART device path,\n"
+            "e.g.  \"range_sensor\": { \"uart\": \"/dev/ttyAMA3\" }"
         ),
     )
     args = p.parse_args()
@@ -106,15 +106,15 @@ def main() -> None:
     with open(args.config) as f:
         cfg = json.load(f)
 
-    tf_cfg = cfg.get("tf_sensor", {})
+    tf_cfg = cfg.get("range_sensor", {})
     uart   = tf_cfg.get("uart")
     baud   = tf_cfg.get("baud", 115200)
 
     if uart is None:
         p.error(
-            "tf_sensor.uart is not set in config.json.\n"
+            "range_sensor.uart is not set in config.json.\n"
             "  Find your device path with: ls -l /dev/ttyAMA*\n"
-            "  Then set it in config.json:  \"tf_sensor\": { \"uart\": \"/dev/ttyAMAx\" }"
+            "  Then set it in config.json:  \"range_sensor\": { \"uart\": \"/dev/ttyAMAx\" }"
         )
 
     if not SERIAL_AVAILABLE:
@@ -131,9 +131,17 @@ def main() -> None:
         print("[TF TEST] Check the UART path and that your user is in the dialout group.")
         return
 
+    last_dist_cm = None
+    last_temp    = None
+
     try:
         while True:
-            result = read_frame(ser)
+            try:
+                result = read_frame(ser)
+            except serial.SerialException as e:
+                print(f"[TF TEST] Serial error: {e} — reconnect sensor and restart.")
+                break
+
             if result is None:
                 print("[TF TEST] No valid frame — check wiring and baud rate")
                 time.sleep(0.5)
@@ -141,10 +149,17 @@ def main() -> None:
 
             dist_m, strength, temp_c = result
 
-            if dist_m is None:
-                print(f"[TF TEST] Distance invalid  | strength={strength}  | temp={temp_c:.1f} C")
-            else:
-                print(f"[TF TEST] {dist_m:.3f} m  ({dist_m * 100:.1f} cm)  | strength={strength}  | temp={temp_c:.1f} C")
+            dist_cm  = None if dist_m is None else round(dist_m * 100, 1)
+            temp_r   = round(temp_c, 1)
+            changed  = (dist_cm != last_dist_cm) or (temp_r != last_temp)
+
+            if changed:
+                if dist_m is None:
+                    print(f"[TF TEST] Distance invalid  | strength={strength}  | temp={temp_r:.1f} C")
+                else:
+                    print(f"[TF TEST] {dist_m:.3f} m  ({dist_cm:.1f} cm)  | strength={strength}  | temp={temp_r:.1f} C")
+                last_dist_cm = dist_cm
+                last_temp    = temp_r
 
     except KeyboardInterrupt:
         print("\n[TF TEST] Stopped.")
