@@ -61,13 +61,13 @@ AeroClean/
 ├── mavlink_controller.py # pymavlink wrapper — arm, takeoff, velocity commands, RTL
 ├── sensors.py            # TF-Luna/TFMini UART range (sensor A, default) + VL53L3CX I2C range (sensor B)
 ├── pump.py               # GPIO pump controller
-├── wiper.py              # Wiper arm controller (actuator TBD)
+├── wiper.py              # Wiper arm controller
 ├── camera_test.py        # Pi camera live view + FPS test
 ├── sensor_tf_test.py     # TF-Luna / TFMini UART range sensor standalone test
 ├── sensor_tf_i2c_test.py # VL53L3CX I2C range sensor standalone test
 ├── sensor_ocr_test.py    # Range sensor + OCR integration test
-├── pump_test.py          # Pump relay standalone test
-├── wiper_test.py         # Wiper relay standalone test
+├── pump_test.py          # Pump test
+├── wiper_test.py         # Wiper test
 ├── preflight_test.py     # Full pipeline test — camera → model → sensor → pump → wiper (no flight)
 ├── collect_data.py       # Capture training images from the Pi camera
 ├── config.json           # All tunable parameters (camera, YOLO, mission)
@@ -814,6 +814,8 @@ If running headless (no monitor), also set `"display": false` (section `_s4`) �
 
 ## Usage
 
+> **Do not run `--mode mission` until all steps in Section 5 pass.**
+
 ### Mission mode (autonomous drone)
 
 ```bash
@@ -877,8 +879,6 @@ Press `q` to quit any live window.
 > `--mode mission` only reads `--config`. All other flags are ignored in mission mode.
 
 ---
-
-> **Do not run `--mode mission` until all steps in Section 5 pass.**
 
 ## Mission mode
 
