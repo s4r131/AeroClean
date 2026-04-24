@@ -116,7 +116,11 @@ class Mission:
         self._range      = self._init_range_sensor(cfg)
         pump_pin = m.get("pump_gpio_pin")
         self._pump       = Pump(int(pump_pin) if pump_pin is not None else None)
-        self._wiper      = Wiper.from_config(config_path)
+        w_cfg = cfg.get("wiper", {})
+        self._wiper      = Wiper(
+            pin             = w_cfg.get("wiper_gpio_pin"),
+            wipe_duration_s = float(w_cfg.get("wipe_duration_s", 2.0)),
+        )
 
         self._state: MissionState = MissionState.IDLE
 

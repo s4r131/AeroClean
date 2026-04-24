@@ -7,7 +7,7 @@ Pipeline
 2. Crop to board_roi if configured.
 3. Downscale by ocr_scale (default 0.5 — 960x540 from 1920x1080).
 4. Preprocess: greyscale → CLAHE → adaptive threshold → morphological close.
-5. Run Tesseract (oem 3, psm 6) to get per-word detections.
+5. Run Tesseract (oem 1, psm 6, character whitelist) to get per-word detections.
 6. Search for the word "dirty" (case-insensitive).
 7. Return True and overlay bounding boxes; return False if not found.
 
@@ -15,12 +15,14 @@ Performance
 -----------
 Three layers of CPU reduction run together:
 
-1. Frame throttling — Tesseract only fires every ocr_interval_s (default
-   2.5 s). Every frame in between returns the cached result instantly.
-2. Downscaling — frame is resized by ocr_scale (default 0.5 → 960x540)
+1. Frame throttling — Tesseract only fires every ocr_frame_interval frames
+   (default 5). Every frame in between returns the cached result instantly.
+2. Dirty-hold hysteresis — once "dirty" is detected the result stays DIRTY
+   for 1.5 s even if subsequent OCR runs find nothing, preventing flicker.
+3. Downscaling — frame is resized by ocr_scale (default 0.5 → 960x540)
    before preprocessing. Adjust in config.json; 0.25 works for large
    marker text and halves the pixel count again.
-3. Tesseract config — oem 1 (LSTM only, faster than combined oem 3) with
+4. Tesseract config — oem 1 (LSTM only, faster than combined oem 3) with
    a character whitelist restricted to the letters in "dirty". Tesseract
    skips all other character classifiers, cutting OCR time by ~50-70%.
 
@@ -207,25 +209,33 @@ class OCRModel:
         result, annotated_frame = model.run(frame)
         # result is True if "dirty" was found on the board
 
-    Tesseract only runs every ocr_interval_s seconds (default 2.5s).
+    Tesseract only runs every ocr_frame_interval frames (default 5).
     Between runs the last known result is returned instantly so the display
     stays live without burning CPU on every frame.
+
+    Dirty-hold hysteresis: once dirty is detected the result stays DIRTY
+    for 1.5 s after the last detection, preventing single-frame flicker.
     """
 
     def __init__(self, config_path: str = "config.json"):
         cfg = _load_config(config_path)
-        self._roi         = cfg.get("board_roi")          # [x, y, w, h] or None
-        self._interval_s  = float(cfg.get("ocr_interval_s", 2.5))
-        self._scale       = float(cfg.get("ocr_scale", 0.5))
-        self._last_run    = 0.0
+        self._roi                = cfg.get("board_roi")          # [x, y, w, h] or None
+        self._ocr_frame_interval = int(cfg.get("ocr_frame_interval", 5))
+        self._scale              = float(cfg.get("ocr_scale", 0.5))
+        self._frame_count        = 0
         self._last_matches: list[dict] = []
+
+        # Dirty-hold hysteresis
+        self._dirty_hold_s   = 1.5
+        self._last_dirty_time = 0.0
 
     def run(self, frame: np.ndarray) -> tuple[bool, np.ndarray]:
         """
         Process a single BGR frame.
 
-        Tesseract is skipped if called within ocr_interval_s of the last run;
-        the cached matches are redrawn on the current frame instead.
+        Tesseract only fires every ocr_frame_interval frames; all other
+        frames return the cached result instantly. Dirty state is held for
+        1.5 s after the last positive detection to prevent flickering.
 
         Parameters
         ----------
@@ -239,12 +249,15 @@ class OCRModel:
         annotated : np.ndarray
             Copy of the input frame with bounding boxes and status overlay.
         """
+        self._frame_count += 1
         now = time.monotonic()
 
-        if now - self._last_run < self._interval_s:
+        if self._frame_count % self._ocr_frame_interval != 0:
             # Throttled — redraw cached result on the new frame
-            annotated = _draw_overlay(frame, self._last_matches)
-            return len(self._last_matches) > 0, annotated
+            within_hold = (now - self._last_dirty_time) <= self._dirty_hold_s
+            dirty = len(self._last_matches) > 0 or within_hold
+            annotated = _draw_overlay(frame, self._last_matches if dirty else [])
+            return dirty, annotated
 
         # Full OCR run
         roi_offset = (0, 0)
@@ -254,8 +267,17 @@ class OCRModel:
 
         processed = _preprocess(cropped, self._scale)
         ocr_data  = _run_ocr(processed)
-        self._last_matches = _find_dirty(ocr_data)
-        self._last_run = now
+        matches   = _find_dirty(ocr_data)
 
-        annotated = _draw_overlay(frame, self._last_matches, roi_offset)
-        return len(self._last_matches) > 0, annotated
+        if matches:
+            self._last_matches = matches
+            self._last_dirty_time = now
+            dirty = True
+        else:
+            within_hold = (now - self._last_dirty_time) <= self._dirty_hold_s
+            dirty = within_hold
+            if not within_hold:
+                self._last_matches = []
+
+        annotated = _draw_overlay(frame, self._last_matches if dirty else [], roi_offset)
+        return dirty, annotated

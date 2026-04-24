@@ -15,8 +15,8 @@
   "board_roi": null,
   "board_roi_note": "Optional [x, y, w, h] crop rectangle. Limits Tesseract to the board area only — the single biggest OCR speedup if the board occupies a known region of the frame. null = full frame.",
 
-  "ocr_interval_s": 2.5,
-  "ocr_interval_s_note": "Minimum seconds between Tesseract runs. Frames between runs return the cached result instantly. Raise to 3.0–4.0 to reduce CPU load further; lower to 1.5 for more responsive detection.",
+  "ocr_frame_interval": 5,
+  "ocr_frame_interval_note": "Run Tesseract every N frames. Frames between runs return the cached result instantly. Raise to 8–10 to reduce CPU load; lower to 3 for more responsive detection. At 30 fps, 5 = ~6 OCR runs/s.",
 
   "ocr_scale": 0.5,
   "ocr_scale_note": "Scale factor applied before OCR preprocessing. 0.5 = 960x540 from 1920x1080. Try 0.25 (480x270) if OCR is still slow — whiteboard marker text is large enough at quarter resolution. Do not go below 0.25 or word detection degrades.",
@@ -65,35 +65,23 @@
     "uart_note": "Sensor A — required. UART device path for the TF sensor. Run ls -l /dev/ttyAMA* to list all UARTs. The number matches your dtoverlay line — e.g. dtoverlay=uart3 gives /dev/ttyAMA3.",
 
     "baud": 115200,
-    "baud_note": "Baud rate for the TF-Luna / TFMini. Fixed at 115200 by hardware — do not change."
+    "baud_note": "Baud rate for the TF-Luna / TFMini. Fixed at 115200 by hardware — do not change.",
+
+    "distance_threshold_m": 0.5,
+    "distance_threshold_m_note": "Distance at which cleaning triggers in preflight_test.py. Set to match approach_stop_dist_m so the preflight test mirrors real mission behaviour."
   },
 
 
   "_s7": "── Wiper arm ────────────────────────────────────────────────────────────",
 
   "wiper": {
-    "_note": "Wiper arm settings (wiper.py). Actuator type TBD — implement wiper.py once the mechanism is confirmed. The arm extends against the board, sweeps left-right, then retracts.",
+    "_note": "Wiper relay settings (wiper.py). GPIO on/off relay: turns on for wipe_duration_s then off. Set wiper_gpio_pin once physically connected.",
 
     "wiper_gpio_pin": null,
-    "wiper_gpio_pin_note": "BCM GPIO pin number wired to the wiper arm control wire. Example: 18. Assign once the mechanism is physically connected.",
+    "wiper_gpio_pin_note": "BCM GPIO pin number wired to the wiper relay IN terminal. Example: 17. Assign once physically connected.",
 
-    "home_angle": 90.0,
-    "home_angle_note": "Arm position when fully retracted and clear of the board (degrees, 0–180).",
-
-    "press_angle": 45.0,
-    "press_angle_note": "Arm position when extended and pressed against the board. Tune based on physical geometry.",
-
-    "sweep_left": 30.0,
-    "sweep_left_note": "Left limit of the wipe arc (degrees). Keep within board edges.",
-
-    "sweep_right": 150.0,
-    "sweep_right_note": "Right limit of the wipe arc (degrees). Keep within board edges.",
-
-    "sweep_passes": 2,
-    "sweep_passes_note": "Number of left-right passes per clean cycle. More passes = cleaner board, longer cleaning time.",
-
-    "sweep_speed": 0.01,
-    "sweep_speed_note": "Delay in seconds per 1-degree step. 0.01 = ~1.5 s per full 120-degree sweep. Lower = faster arm movement."
+    "wipe_duration_s": 5.0,
+    "wipe_duration_s_note": "How long to run the wiper relay per cleaning cycle (seconds). Wiper turns on for this duration then off."
   },
 
 
@@ -140,6 +128,9 @@
 
     "pump_duration_s": 5.0,
     "pump_duration_s_note": "How long to run the pump during CLEAN (seconds). Runs before the wiper sweep.",
+
+    "cleaning_cooldown_s": 5.0,
+    "cleaning_cooldown_s_note": "Preflight test only. Minimum seconds between cleaning cycles. Prevents re-triggering on every dirty frame.",
 
     "frame_width_px": 1920,
     "frame_width_px_note": "Frame width used by the approach P controller to compute pixel error from centre. Must match resolution[0] above.",
