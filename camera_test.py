@@ -19,12 +19,34 @@ import cv2
 from camera import Camera
 
 
+def _banner(groups: list[list[str]]) -> None:
+    width = max(len(l) for g in groups for l in g) + 4
+    sep   = "═" * width
+    print(f"╔{sep}╗")
+    for i, group in enumerate(groups):
+        for line in group:
+            print(f"║  {line:<{width - 2}}║")
+        if i < len(groups) - 1:
+            print(f"╠{sep}╣")
+    print(f"╚{sep}╝")
+
+
 def main() -> None:
     p = argparse.ArgumentParser(description="Pi camera live test")
     p.add_argument("--config", default="config.json")
     args = p.parse_args()
 
-    print("[CAM TEST] Opening camera — press  q  to quit")
+    _banner([
+        [
+            "AeroClean — Camera Test",
+            "Verifies IMX708 is detected and delivering frames",
+        ],
+        [
+            "Expect : FPS prints only when value changes — stable camera goes silent",
+            "Stop   : press  q  in the live window",
+        ],
+    ])
+    print("[CAM TEST] Opening camera...")
 
     frame_count = 0
     t_start     = time.monotonic()

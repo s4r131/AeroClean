@@ -142,6 +142,11 @@ class MAVLinkController:
                         self._alt_m       = alt_m
                         self._heading_deg = hdg_deg
 
+                elif t == "STATUSTEXT":
+                    text = msg.text.strip()
+                    if text:
+                        print(f"[FC] STATUS: {text}")
+
             except Exception as e:
                 print(f"[FC] Telemetry read error: {e}")
                 time.sleep(0.05)

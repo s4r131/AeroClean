@@ -33,6 +33,18 @@ from ocr_model import OCRModel
 from sensors import RangeSensor, TFRangeSensor
 
 
+def _banner(groups: list[list[str]]) -> None:
+    width = max(len(l) for g in groups for l in g) + 4
+    sep   = "═" * width
+    print(f"╔{sep}╗")
+    for i, group in enumerate(groups):
+        for line in group:
+            print(f"║  {line:<{width - 2}}║")
+        if i < len(groups) - 1:
+            print(f"╠{sep}╣")
+    print(f"╚{sep}╝")
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # CLI
 # ─────────────────────────────────────────────────────────────────────────────
@@ -172,21 +184,34 @@ def main() -> None:
                 "  Find your device path with: ls -l /dev/ttyAMA*\n"
                 "  Then set it in config.json:  \"range_sensor\": { \"uart\": \"/dev/ttyAMAx\" }"
             )
-        sensor = TFRangeSensor(uart, baud=tf_cfg.get("baud", 115200))
-        print(f"[TEST] Using sensor A — TF-Luna/TFMini on {uart}")
+        baud   = tf_cfg.get("baud", 115200)
+        sensor = TFRangeSensor(uart, baud=baud)
+        sensor_desc = [f"Sensor : TF-Luna / TFMini (sensor A)", f"UART   : {uart}  {baud} baud"]
     else:
         range_cfg     = cfg.get("range_sensor", {})
         timing_budget = int(range_cfg.get("timing_budget_ms", 50))
-        sensor = RangeSensor(range_cfg.get("i2c_address", 0x29), timing_budget_ms=timing_budget)
-        print("[TEST] Using sensor B — VL53L3CX (I2C)")
+        i2c_address   = range_cfg.get("i2c_address", 0x29)
+        sensor        = RangeSensor(i2c_address, timing_budget_ms=timing_budget)
+        sensor_desc   = [f"Sensor : VL53L3CX (sensor B)", f"I2C    : 0x{i2c_address:02X}  {timing_budget} ms budget"]
     sensor.start()
+
+    _banner([
+        [
+            "AeroClean — Sensor + OCR Test",
+            "Verifies OCR detection and range sensor work together",
+        ],
+        sensor_desc,
+        [
+            "Expect : prints only on CLEAN / DIRTY state change or distance change",
+            "Stop   : press  q  in the live window",
+        ],
+    ])
 
     ocr = OCRModel(config_path=args.config)
 
     frames = _frames_from_file(args.source) if args.source else _frames_from_camera(args.config)
 
     cv2.namedWindow("AeroClean — Sensor+OCR Test", cv2.WINDOW_NORMAL)
-    print("[TEST] Running. Press  q  to quit.")
 
     prev_dirty    = None
     last_dist_cm  = None

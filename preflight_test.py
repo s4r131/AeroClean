@@ -45,6 +45,18 @@ from sensors import TFRangeSensor
 from wiper import Wiper
 
 
+def _banner(groups: list[list[str]]) -> None:
+    width = max(len(l) for g in groups for l in g) + 4
+    sep   = "═" * width
+    print(f"╔{sep}╗")
+    for i, group in enumerate(groups):
+        for line in group:
+            print(f"║  {line:<{width - 2}}║")
+        if i < len(groups) - 1:
+            print(f"╠{sep}╣")
+    print(f"╚{sep}╝")
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Cleaning trigger
 # ─────────────────────────────────────────────────────────────────────────────
@@ -234,16 +246,28 @@ def main() -> None:
     if args.model == "ocr":
         from ocr_model import OCRModel
         model = OCRModel(config_path=args.config)
-        print("[INFO] OCR model loaded")
     else:
         from yolo_model import YOLOModel
         model = YOLOModel(config_path=args.config, conf_override=args.conf)
-        print("[INFO] YOLO model loaded")
 
     tf_sensor = TFRangeSensor(tf_port, baud=tf_baud)
     tf_sensor.start()
-    print(f"[TF] Sensor on {tf_port} @ {tf_baud} baud")
-    print(f"[TF] Cleaning triggers at ≤ {distance_threshold_m:.2f} m")
+
+    _banner([
+        [
+            f"AeroClean — Preflight Test  ({args.model.upper()})",
+            "Verifies the full camera → model → sensor → pump → wiper chain",
+        ],
+        [
+            f"Model  : {args.model.upper()}",
+            f"UART   : {tf_port}  {tf_baud} baud",
+            f"Trigger: board dirty AND within {distance_threshold_m:.2f} m",
+        ],
+        [
+            "Expect : prints only on state change or distance change",
+            "Stop   : press  q  in the live window  or  Ctrl+C",
+        ],
+    ])
 
     frames      = _frames_from_file(args.source) if args.source else _frames_from_camera(args.config)
     window_name = f"AeroClean — Preflight ({args.model.upper()})"
@@ -314,10 +338,16 @@ def main() -> None:
                 break
 
     except KeyboardInterrupt:
-        print("\n[INFO] Stopped.")
+        print("\n[PREFLIGHT] Stopped.")
     finally:
-        tf_sensor.stop()
-        trigger.close()
+        try:
+            tf_sensor.stop()
+        except Exception:
+            pass
+        try:
+            trigger.close()
+        except Exception:
+            pass
         if display:
             cv2.destroyAllWindows()
 

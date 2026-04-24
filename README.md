@@ -41,7 +41,7 @@ If you don't see `(aeroclean_env)`, run the activate command again before contin
 
 **Step 4 — Start the mission**
 
-Once all hardware tests pass (see [Setup → Step 4](#4-map-configjson-and-verify-each-hardware-component)):
+Once all hardware tests pass (see [Setup → Step 5](#5-test-each-hardware-component)):
 ```bash
 python main.py --mode mission
 ```
@@ -188,14 +188,16 @@ Complete all four sub-steps in order. The Python packages must go inside the vir
 
 #### 2a — Update and install system packages
 
-This downloads and installs the Tesseract OCR engine and I2C diagnostic tools. It will take a few minutes.
+This downloads and installs the Tesseract OCR engine, camera library, and I2C diagnostic tools. It will take a few minutes.
 
 ```bash
 sudo apt update && sudo apt upgrade -y
-sudo apt install -y tesseract-ocr libcap-dev i2c-tools
+sudo apt install -y python3-picamera2 tesseract-ocr libcap-dev i2c-tools
 ```
 
 > ✓ **Before continuing:** the install should finish without any `ERROR` lines.
+
+---
 
 #### 2b — Clone the repository
 
@@ -213,6 +215,8 @@ ls
 You should see `main.py`, `config.json`, `requirements.txt`, and the rest of the project files.
 
 > ✓ **Before continuing:** confirm `main.py` and `config.json` appear in the output above.
+
+---
 
 #### 2c — Create and activate the virtual environment
 
@@ -236,6 +240,8 @@ pi@raspberrypi:~/AeroClean$
 
 **Important:** every time you open a new SSH session, you must run `source aeroclean_env/bin/activate` again before running any scripts. The environment does not stay active between sessions.
 
+---
+
 #### 2d — Install Python dependencies
 
 With the environment active, install all required Python packages:
@@ -247,6 +253,8 @@ pip install -r requirements.txt
 This installs everything the project needs — pymavlink, Ultralytics YOLO, the Adafruit sensor libraries, and more. It will take a few minutes the first time.
 
 > ✓ **Before continuing:** the install should finish without any `ERROR` lines. Warnings are fine.
+
+---
 
 #### 2e — Add your user to the dialout group
 
@@ -553,6 +561,8 @@ Find the `range_sensor` block (`_s5`) and confirm:
 ```
 Save: `Ctrl+X` → `Y` → `Enter`.
 
+---
+
 #### Verified `/boot/firmware/config.txt`
 
 After all sub-steps, your `config.txt` should contain at minimum. Use **only one** of the two blocks below — whichever matches your hardware:
@@ -571,9 +581,13 @@ dtparam=i2c_arm=on
 ```
 No overlay UART needed — the VL53L3CX uses I2C. Add `dtoverlay=uartX` lines for any additional serial peripherals.
 
+---
+
 ### 4. Configure config.json
 
 Now that you know which `/dev/ttyAMAX` path belongs to each UART (from Step 3), enter those values into `config.json`. **The mission will not start until these are filled in** — it will print a clear error if any required value is still `null`.
+
+---
 
 ### 5. Test each hardware component
 
@@ -586,7 +600,7 @@ Confirm the camera is detected and delivering frames before anything else.
 ```bash
 python camera_test.py
 ```
-Expected: live window opens, terminal prints resolution and FPS every second.
+Expected: a startup banner prints, then a live window opens. The terminal only prints when FPS changes — a stable camera will print once and then go silent:
 ```
 [CAM TEST] 1920x1080  28.3 FPS
 ```
@@ -604,7 +618,16 @@ python main.py --model ocr
 # OR — YOLO — classify the board as clean or dirty
 python main.py --model yolo
 ```
-Expected: live window with bounding boxes or OCR overlays. Press `q` to quit.
+Expected: live window with bounding boxes or OCR overlays. The terminal only prints when the detected state changes — hold a dirty board in front of the camera then remove it:
+```
+[OCR]  active state — dirty
+[OCR]  active state — clean
+```
+```
+[YOLO] active state — dirty_board  conf=0.91
+[YOLO] active state — no board detected
+```
+Press `q` to quit.
 
 ---
 
@@ -616,9 +639,9 @@ Run the test for whichever sensor you have wired.
 ```bash
 python sensor_tf_test.py
 ```
-Expected:
+Expected: a startup banner prints, a spinner animates while waiting for the first frame, then the terminal only prints when distance changes — move your hand toward and away from the sensor to see readings update:
 ```
-[TF TEST] 0.452 m  (45.2 cm)  | strength=412  | temp=32.1 C
+[TF TEST] 0.452 m  (45.2 cm)
 ```
 Requires `range_sensor.uart` to be set in `config.json` first — the script will error clearly if it is not.
 
@@ -626,7 +649,7 @@ Requires `range_sensor.uart` to be set in `config.json` first — the script wil
 ```bash
 python sensor_tf_i2c_test.py
 ```
-Expected:
+Expected: a startup banner prints, a spinner animates until the first reading arrives, then the terminal only prints when distance changes:
 ```
 [RANGE TEST] 0.452 m  (45.2 cm)
 ```
@@ -647,21 +670,74 @@ python sensor_ocr_test.py
 python sensor_ocr_test.py --sensor b
 ```
 
-Expected for both: `CLEAN` banner when nothing is detected. When a board marked "dirty" is in view:
+Expected for both: a startup banner prints, then the terminal only prints on state change (clean → dirty or dirty → clean) or when distance changes. Hold a board marked "dirty" in view then remove it:
 ```
 [TEST] DIRTY detected — range=0.842m
+[TEST] CLEAN
 ```
 Window shows bounding box + distance overlay.
 
 ---
 
-#### 5e — Wiper
+#### 5e — Pump
 
-> **Not yet implemented** — wiper actuator type is TBD. This step is a placeholder for when the wiper mechanism is confirmed and `wiper.py` is fully implemented.
+Confirm the pump relay fires on the configured GPIO pin. Requires `mission.pump_gpio_pin` to be set in `config.json`.
 
-Once the wiper is wired and implemented, this test will confirm the full cleaning cycle end-to-end: OCR detects dirty board → range sensor confirms distance → wiper engages.
+```bash
+python pump_test.py
+```
 
-**Do not run `--mode mission` until all steps pass.**
+The script prints the banner, then waits for you to press Enter before firing — so you have time to position the pump. Expected output:
+
+```
+[PUMP TEST] Firing pump on pin 17 for 5.0s...
+[PUMP TEST] Done — relay should have clicked OFF.
+[PUMP TEST] If you heard two relay clicks and saw water, the pump is confirmed.
+```
+
+You should hear the relay click ON, water flow for the duration, then click OFF. If the relay clicks but no water flows, check the pump power supply and tube connections.
+
+---
+
+#### 5f — Wiper
+
+Confirm the wiper relay fires on the configured GPIO pin. Requires `wiper.wiper_gpio_pin` to be set in `config.json`.
+
+```bash
+python wiper_test.py
+```
+
+The script prints the banner, then waits for you to press Enter before firing — so you have time to clear the area around the wiper arm. Expected output:
+
+```
+[WIPER TEST] Firing wiper on pin 18 for 2.0s...
+[WIPER TEST] Done — relay should have clicked OFF.
+[WIPER TEST] If you heard two relay clicks and the arm moved, the wiper is confirmed.
+```
+
+You should hear the relay click ON, the wiper arm sweep for the duration, then click OFF. If the relay clicks but the arm does not move, check the wiper power supply and mechanical linkage.
+
+---
+
+#### 5g — Preflight (full pipeline)
+
+Run this only after 5a–5f all pass. Confirms the entire chain — camera → model → range sensor → pump → wiper — fires together correctly on the bench with no flight required.
+
+```bash
+python preflight_test.py --model ocr
+# OR
+python preflight_test.py --model yolo
+```
+
+A startup banner prints showing the active model, UART path, and trigger distance. A live window opens with the board state overlaid. The terminal only prints on state change or distance change:
+
+```
+[OCR]  active state — dirty   [TF] 0.38 m
+[OCR]  active state — clean   [TF] 0.38 m
+[ACTION] SPRAY → WIPE
+```
+
+Hold a dirty board within the trigger distance (`approach_stop_dist_m` in `config.json`) — the pump and wiper should fire automatically. Press `q` in the window or `Ctrl+C` to stop cleanly.
 
 ---
 
@@ -799,6 +875,8 @@ Press `q` to quit any live window.
 
 ---
 
+> **Do not run `--mode mission` until all steps in Section 5 pass.**
+
 ## Mission mode
 
 ### State machine
@@ -812,7 +890,7 @@ Any exception → ABORTED (safe shutdown + RTL attempted)
 
 | State | What happens |
 |---|---|
-| **IDLE** | Arms the flight controller and initiates takeoff |
+| **IDLE** | Sets GUIDED mode, arms the flight controller, and initiates takeoff. If ArduPilot rejects the arm command, rejection reasons are printed as `[FC] STATUS: PreArm: ...` lines until the 15 s timeout aborts the mission |
 | **SCAN** | Slow constant yaw spin; YOLO runs on every frame looking for `dirty_board` |
 | **APPROACH** | **Phase 1 — Align:** holds position (vx=0), corrects lateral/vertical until board is centred within `align_threshold_px`. **Phase 2 — Approach:** drives forward proportionally to remaining distance (`vx = kp_forward × (dist − stop_dist)`), naturally decelerating to zero at the board; stops when the range sensor reads ≤ `approach_stop_dist_m` |
 | **CLEAN** | Holds position; activates pump for `pump_duration_s` seconds, then actuates the wiper arm sweep |
@@ -824,6 +902,77 @@ Any exception → ABORTED (safe shutdown + RTL attempted)
 ## Reference
 
 For full model details, training walkthrough, configuration reference, and system architecture, see [system_guide.html](system_guide.html).
+
+---
+
+## Supplementary — Models
+
+### Model 1 — OCR pipeline
+
+The OCR model looks for the word "dirty" written in marker on the board surface.
+
+#### Preprocessing stages
+
+| Stage | What it does |
+|---|---|
+| **Greyscale** | Strips colour — OCR only needs luminance |
+| **CLAHE** | Contrast Limited Adaptive Histogram Equalisation — lifts faint marker strokes that the board's reflective surface would otherwise wash out |
+| **Adaptive threshold** | Converts to pure black-and-white using local pixel neighbourhoods — handles shadows and hotspots that a global threshold misses |
+| **Morphological close** | Joins broken letter strokes so Tesseract sees whole characters instead of fragments |
+
+Tesseract is configured with `--oem 3 --psm 6` (neural-network engine, assume a uniform block of text). The result is searched for the word `dirty` using a case-insensitive regular expression.
+
+Matched words are highlighted with red bounding boxes; unmatched frames show a green `CLEAN` banner.
+
+---
+
+### Model 2 — YOLO11n board detector
+
+The YOLO model classifies the board as `clean_board` or `dirty_board` and draws a bounding box around it.
+
+#### Why YOLO11n?
+
+YOLO11n is the latest nano variant from Ultralytics. It was chosen over YOLOv8n for this project because:
+
+| Model | Parameters | mAP50 (COCO) | Latency on RPi 5 CPU (NCNN) |
+|---|---|---|---|
+| YOLOv8n | 3.2M | 37.3% | ~120 ms |
+| YOLO11n | 2.6M | 39.5% | ~80 ms |
+
+YOLO11n is both smaller and more accurate than YOLOv8n — the right choice for a resource-constrained device.
+
+#### Export format: NCNN
+
+NCNN is a neural network inference framework optimised for ARM CPUs. Exporting to NCNN instead of running raw PyTorch gives approximately 2× faster inference on the Raspberry Pi 5 with no GPU required.
+
+#### Classes
+
+| ID | Name | Description |
+|---|---|---|
+| 0 | `clean_board` | Erased, usable board surface |
+| 1 | `dirty_board` | Marker residue, ghost marks, or heavy smudging |
+
+#### YOLO11 model sizes
+
+| Model | Parameters | mAP50 (COCO val) | Notes |
+|---|---|---|---|
+| yolo11n | 2.6M | 39.5% | Used in this project — best speed/accuracy for Pi |
+| yolo11s | 9.4M | 47.0% | Good if you can afford ~3× more compute |
+| yolo11m | 20.1M | 51.5% | Desktop/laptop training only |
+| yolo11l | 25.3M | 53.4% | Requires GPU for practical inference |
+| yolo11x | 56.9M | 54.7% | Highest accuracy; not viable on Pi |
+
+n = nano · s = small · m = medium · l = large · x = extra-large
+
+#### Task variants
+
+| Variant | Weights file | What it does |
+|---|---|---|
+| Detection | `yolo11n.pt` | Axis-aligned bounding boxes — used in this project |
+| OBB | `yolo11n-obb.pt` | Oriented (rotated) bounding boxes |
+| Segmentation | `yolo11n-seg.pt` | Pixel-level instance masks |
+| Pose | `yolo11n-pose.pt` | Keypoint detection (e.g. human joints) |
+| Classification | `yolo11n-cls.pt` | Whole-image class label, no boxes |
 
 ---
 

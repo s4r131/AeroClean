@@ -199,7 +199,10 @@ class TFRangeSensor:
         if self._thread is not None:
             self._thread.join(timeout=2.0)
         if self._ser is not None:
-            self._ser.close()
+            try:
+                self._ser.close()
+            except Exception:
+                pass
         print("[TF RANGE] Sensor stopped")
 
     # ─────────────────────────────────────────────────────────────────────────

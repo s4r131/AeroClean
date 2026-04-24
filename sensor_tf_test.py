@@ -24,7 +24,9 @@ Requires range_sensor.uart to be set in config.json before running.
 from __future__ import annotations
 
 import argparse
+import itertools
 import json
+import sys
 import time
 
 try:
@@ -32,6 +34,18 @@ try:
     SERIAL_AVAILABLE = True
 except ImportError:
     SERIAL_AVAILABLE = False
+
+
+def _banner(groups: list[list[str]]) -> None:
+    width = max(len(l) for g in groups for l in g) + 4
+    sep   = "═" * width
+    print(f"╔{sep}╗")
+    for i, group in enumerate(groups):
+        for line in group:
+            print(f"║  {line:<{width - 2}}║")
+        if i < len(groups) - 1:
+            print(f"╠{sep}╣")
+    print(f"╚{sep}╝")
 
 
 def read_frame(ser) -> tuple[float | None, int, float] | None:
@@ -121,8 +135,20 @@ def main() -> None:
         print("[TF TEST] pyserial is not installed. Run:  pip install pyserial")
         return
 
-    print(f"[TF TEST] Opening {uart} @ {baud} baud")
-    print("[TF TEST] Reading distance — Ctrl+C to stop\n")
+    _banner([
+        [
+            "AeroClean — TF Sensor Test",
+            "Verifies TF-Luna / TFMini is wired and responding over UART",
+        ],
+        [
+            f"UART : {uart}",
+            f"Baud : {baud}",
+        ],
+        [
+            "Expect : distance prints only when value changes",
+            "Stop   : Ctrl+C",
+        ],
+    ])
 
     try:
         ser = serial.Serial(uart, baud, timeout=1)
@@ -132,39 +158,50 @@ def main() -> None:
         return
 
     last_dist_cm = None
-    last_temp    = None
+    got_first    = False
+    spin         = itertools.cycle(r"|/-\\")
 
     try:
         while True:
             try:
                 result = read_frame(ser)
             except serial.SerialException as e:
+                if not got_first:
+                    print()
                 print(f"[TF TEST] Serial error: {e} — reconnect sensor and restart.")
                 break
 
             if result is None:
-                print("[TF TEST] No valid frame — check wiring and baud rate")
-                time.sleep(0.5)
+                if not got_first:
+                    sys.stdout.write(f"\r  {next(spin)}  Waiting for sensor data...")
+                    sys.stdout.flush()
+                else:
+                    print("[TF TEST] No valid frame — check wiring and baud rate")
+                    time.sleep(0.5)
                 continue
 
-            dist_m, strength, temp_c = result
+            if not got_first:
+                sys.stdout.write("\r" + " " * 50 + "\r")
+                sys.stdout.flush()
+                got_first = True
 
-            dist_cm  = None if dist_m is None else round(dist_m * 100, 1)
-            temp_r   = round(temp_c, 1)
-            changed  = (dist_cm != last_dist_cm) or (temp_r != last_temp)
+            dist_m, _, _ = result
+            dist_cm = None if dist_m is None else round(dist_m * 100, 1)
 
-            if changed:
+            if dist_cm != last_dist_cm:
                 if dist_m is None:
-                    print(f"[TF TEST] Distance invalid  | strength={strength}  | temp={temp_r:.1f} C")
+                    print("[TF TEST] Distance invalid")
                 else:
-                    print(f"[TF TEST] {dist_m:.3f} m  ({dist_cm:.1f} cm)  | strength={strength}  | temp={temp_r:.1f} C")
+                    print(f"[TF TEST] {dist_m:.3f} m  ({dist_cm:.1f} cm)")
                 last_dist_cm = dist_cm
-                last_temp    = temp_r
 
     except KeyboardInterrupt:
         print("\n[TF TEST] Stopped.")
     finally:
-        ser.close()
+        try:
+            ser.close()
+        except Exception:
+            pass
 
 
 if __name__ == "__main__":

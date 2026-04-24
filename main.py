@@ -173,19 +173,26 @@ def main():
 
     print("[INFO] Running. Press  q  to quit.")
 
+    prev_state = None
+
     # ── Inference loop ───────────────────────────────────────────────────────
     for frame in frames:
         result, annotated = model.run(frame)
 
-        # Print result --------------------------------------------------------
+        # Print only on state change ------------------------------------------
         if args.model == "ocr":
-            status = "DIRTY" if result else "CLEAN"
-            print(f"[OCR]  dirty={result}  →  {status}")
+            state = bool(result)
+            if state != prev_state:
+                print(f"[OCR]  active state — {'dirty' if state else 'clean'}")
+                prev_state = state
         else:
-            if result:
-                print(f"[YOLO] {result['class_name']}  conf={result['confidence']:.2f}  bbox={result['bbox']}")
-            else:
-                print("[YOLO] No board detected")
+            state = result["class_name"] if result else None
+            if state != prev_state:
+                if result:
+                    print(f"[YOLO] active state — {result['class_name']}  conf={result['confidence']:.2f}")
+                else:
+                    print("[YOLO] active state — no board detected")
+                prev_state = state
 
         # Save ----------------------------------------------------------------
         if args.save:
