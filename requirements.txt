@@ -11,9 +11,6 @@
 opencv-python>=4.9.0
 numpy>=1.26.0
 
-# Pi camera (IMX708) — pip-installable; requires libcamera system libraries on Pi
-picamera2>=0.3.0
-
 # OCR (Model 1)
 pytesseract>=0.3.10
 # Also install the Tesseract binary:

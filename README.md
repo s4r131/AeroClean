@@ -54,7 +54,7 @@ The drone arms, takes off to 1.5 m, yaw-spins to scan for a dirty board, approac
 ```
 AeroClean/
 ├── main.py               # Entry point — --mode mission | --model ocr | yolo
-├── camera.py             # picamera2 capture wrapper (IMX708)
+├── camera.py             # OpenCV VideoCapture wrapper (OV2311 USB camera)
 ├── ocr_model.py          # Model 1: Tesseract OCR pipeline
 ├── yolo_model.py         # Model 2: YOLO11n NCNN inference
 ├── mission.py            # Autonomous mission state machine (IDLE→SCAN→APPROACH→CLEAN→RETURN)
@@ -89,8 +89,8 @@ AeroClean/
 | Component | Specification |
 |---|---|
 | **Board** | Raspberry Pi 5 (4 GB or 8 GB RAM) |
-| **Camera** | Arducam / Raspberry Pi Camera Module 3 — IMX708, 12MP, 75° diagonal |
-| **Camera connection** | CSI ribbon cable (included with Camera Module 3) |
+| **Camera** | Arducam 2MP Global Shutter USB Camera — OV2311, 1600×1200, 50 fps |
+| **Camera connection** | USB (UVC-compliant — plug and play, no drivers needed) |
 | **Flight controller** | ArduPilot-compatible FC (e.g. Pixhawk) — connected to Pi via UART (confirm path with `ls -l /dev/ttyAMA*`) |
 | **Flow sensor** | MicoAir MTF-02P optical flow sensor — connected to the FC optical flow UART port (not the Pi) |
 | **Range sensor** | **Sensor A (default):** TF-Luna / TFMini — UART (set `range_sensor.uart` in config.json)  **or  Sensor B:** VL53L3CX ToF — I2C, GPIO 2/3 (pins 3/5), 3 m range (set `range_sensor.type = "b"`) |
@@ -109,7 +109,7 @@ How all the hardware pieces connect and what each one does.
 ┌─────────────────────────────────────────┐
 │           Raspberry Pi 5                │
 │                                         │
-│  IMX708 Camera         →  YOLO detection│
+│  OV2311 USB Camera     →  YOLO detection│
 │  TF-Luna/TFMini (UART) →  forward range │
 │  Mission state machine                  │
 │  GPIO pump pin         →  pump relay    │
@@ -167,7 +167,7 @@ ArduPilot handles all low-level stabilisation. The Pi sends body-frame velocity 
 Gather everything before starting setup.
 
 - [ ] Raspberry Pi 5 (4 GB or 8 GB)
-- [ ] Camera Module 3 (IMX708) on CSI ribbon
+- [ ] Arducam OV2311 USB camera plugged in
 - [ ] ArduPilot flight controller — TELEM/UART port wired to Pi UART
 - [ ] MicoAir MTF-02P — wired to the FC optical flow UART port (not the Pi)
 - [ ] Range sensor — **sensor A (default):** TF-Luna / TFMini (UART, wire to a free Pi UART)  **or  sensor B:** VL53L3CX (I2C, wire to GPIO 2/3, pins 3/5)
@@ -195,7 +195,7 @@ This downloads and installs the Tesseract OCR engine, camera library, and I2C di
 
 ```bash
 sudo apt update && sudo apt upgrade -y
-sudo apt install -y python3-picamera2 tesseract-ocr libcap-dev i2c-tools
+sudo apt install -y tesseract-ocr libcap-dev i2c-tools
 ```
 
 > ✓ **Before continuing:** the install should finish without any `ERROR` lines.
@@ -352,49 +352,23 @@ The `no ... = none` pattern means the pin is sitting idle with no peripheral att
 
 ---
 
-#### Sub-step 0 — Enable the IMX708 camera
+#### Sub-step 0 — Verify USB camera
 
-> **Do this first.** The camera must be configured in `config.txt` before `rpicam-hello --list-cameras` or `camera_test.py` can detect it.
+The OV2311 is UVC-compliant — no `config.txt` changes or reboot needed. Run this **before** plugging in the camera, then again **after** — the new entry that appears is your device:
 
-Open the config file:
 ```bash
-sudo nano /boot/firmware/config.txt
+ls /dev/video*   # before — note existing entries
+# plug in camera
+ls /dev/video*   # after — new entry is your camera (e.g. /dev/video0 → camera_device: 0)
 ```
 
-Find the line `camera_auto_detect=1` and change it to:
-```
-camera_auto_detect=0
-```
+That number is your `camera_device` index in `config.json` (`_s1`). Default is `0` — only change it if other USB video devices are already connected:
 
-Then find the `[all]` section and add the overlay line below it:
-```
-dtoverlay=imx708
-```
-
-> **If your ribbon cable is in the CAM0 port** (lower port) instead of CAM1 (upper port), use `dtoverlay=imx708,cam0` instead. Run `pinout` to see a labelled diagram of both ports:
-> ```bash
-> pinout
-> ```
-> Look for the `CAM0` and `CAM1` labels to identify which port your ribbon is connected to.
-
-Save and exit (`Ctrl+X` → `Y` → `Enter`), then reboot:
 ```bash
-sudo reboot
+sudo nano config.json   # set camera_device to the correct index (_s1)
 ```
 
-After rebooting, reconnect via SSH, then re-enter the project and activate the environment:
-```bash
-cd ~/AeroClean
-source aeroclean_env/bin/activate
-```
-
-Verify the camera is detected:
-```bash
-rpicam-hello --list-cameras
-```
-Expected output contains `IMX708`. If the camera is not listed, recheck the CSI ribbon cable and that the overlay line was saved correctly.
-
-> ✓ **Before continuing:** confirm `IMX708` appears in the `rpicam-hello` output above.
+> ✓ **Before continuing:** confirm a new `/dev/video*` entry appears when the camera is plugged in.
 
 ---
 
@@ -795,9 +769,9 @@ Use this after completing all setup steps to confirm nothing was missed before a
 ### Software
 
 - [ ] System packages installed: `sudo apt install tesseract-ocr libcap-dev i2c-tools`
-- [ ] IMX708 camera enabled in `/boot/firmware/config.txt` (`camera_auto_detect=0`, `dtoverlay=imx708`) and `libcamera-hello --list-cameras` shows `IMX708`
+- [ ] USB camera plugged in and visible — `ls /dev/video*` shows a device (e.g. `/dev/video0`)
 - [ ] Virtual environment created and active (`source aeroclean_env/bin/activate`)
-- [ ] Python packages installed inside the venv: `pip install -r requirements.txt` (includes `picamera2`)
+- [ ] Python packages installed inside the venv: `pip install -r requirements.txt`
 - [ ] Serial login shell disabled — `console=serial0,115200` removed from `/boot/firmware/cmdline.txt` and `serial-getty@ttyAMA0.service` disabled
 - [ ] `dtparam=i2c_arm=on` in `/boot/firmware/config.txt` **(sensor B only — VL53L3CX)**
 - [ ] `enable_uart=1` and `dtoverlay=uartX` in `/boot/firmware/config.txt`

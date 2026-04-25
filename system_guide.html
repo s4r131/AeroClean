@@ -334,7 +334,7 @@ python main.py --mode mission</pre>
         <thead><tr><th>Component</th><th>Specification</th></tr></thead>
         <tbody>
           <tr><td><strong>Board</strong></td><td>Raspberry Pi 5 — 4 GB or 8 GB RAM</td></tr>
-          <tr><td><strong>Camera</strong></td><td>Camera Module 3 (IMX708) — 12MP, 75° diagonal, CSI ribbon</td></tr>
+          <tr><td><strong>Camera</strong></td><td>Arducam 2MP Global Shutter USB Camera (OV2311) — 1600×1200, 50 fps, UVC USB</td></tr>
           <tr><td><strong>Flight controller</strong></td><td>ArduPilot-compatible FC (e.g. Pixhawk) — TELEM port → Pi UART</td></tr>
           <tr><td><strong>Flow sensor</strong></td><td>MicoAir MTF-02P optical flow — connects to ArduPilot FC (not Pi)</td></tr>
           <tr><td><strong>Range sensor</strong></td><td><span class="sa">A</span> TF-Luna/TFMini — UART  <em>or</em>  <span class="sb">B</span> VL53L3CX — I2C GPIO 2/3</td></tr>
@@ -365,7 +365,7 @@ python main.py --mode mission</pre>
 <span class="pi">┌─────────────────────────────────────────┐
 │           Raspberry Pi 5                │
 │                                         │
-│  IMX708 Camera         →  YOLO / OCR    │
+│  OV2311 USB Camera     →  YOLO / OCR    │
 │  TF-Luna/TFMini (UART) →  forward range │
 │  Mission state machine                  │
 │  GPIO pump pin         →  pump relay    │
@@ -408,7 +408,7 @@ python main.py --mode mission</pre>
       <div class="code-block">
         <div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="cc(this)">Copy</button></div>
         <pre>sudo apt update && sudo apt upgrade -y
-sudo apt install -y python3-picamera2 tesseract-ocr libcap-dev i2c-tools</pre>
+sudo apt install -y tesseract-ocr libcap-dev i2c-tools</pre>
       </div>
       <div class="callout tip" style="margin-top:6px">
         <span class="icon">✓</span>
@@ -429,23 +429,17 @@ pip install -r requirements.txt</pre>
         <div>Reactivate with <code>source aeroclean_env/bin/activate</code> in every new terminal. Your prompt should show <code>(aeroclean_env)</code> before running anything.</div>
       </div>
 
-      <h3>Step 3 — Enable IMX708 camera</h3>
-      <p style="font-size:13px;color:#475569">Open <code>/boot/firmware/config.txt</code> and make these two changes:</p>
-      <div class="code-block">
-        <div class="code-header"><span class="code-lang">/boot/firmware/config.txt</span><button class="copy-btn" onclick="cc(this)">Copy</button></div>
-        <pre>camera_auto_detect=0
-dtoverlay=imx708
-<span class="cm"># If ribbon is in CAM0 (lower port): dtoverlay=imx708,cam0</span></pre>
-      </div>
-      <p style="font-size:12.5px;color:#475569">Save, reboot, then verify:</p>
+      <h3>Step 3 — Verify USB camera</h3>
+      <p style="font-size:13px;color:#475569">The OV2311 is UVC-compliant — no <code>config.txt</code> changes or reboot needed. Run this <strong>before</strong> plugging in the camera, then again <strong>after</strong> — the new entry that appears is your device:</p>
       <div class="code-block">
         <div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="cc(this)">Copy</button></div>
-        <pre>libcamera-hello --list-cameras
-<span class="cm"># Expected output contains: IMX708</span></pre>
+        <pre>ls /dev/video*   <span class="cm"># run before plugging in — note existing entries</span>
+<span class="cm"># plug in camera</span>
+ls /dev/video*   <span class="cm"># new entry = your camera (e.g. /dev/video0 → camera_device: 0)</span></pre>
       </div>
       <div class="callout tip" style="margin-top:6px">
         <span class="icon">✓</span>
-        <div>Confirm <code>IMX708</code> appears before continuing. Run <code>pinout</code> to identify CAM0 vs CAM1 port positions.</div>
+        <div>Note the device number — it goes in <code>config.json → camera_device</code> (<code>_s1</code>). Default is <code>0</code>. Only change it if other USB video devices are already connected.</div>
       </div>
     </div>
 
@@ -541,8 +535,8 @@ ls -la /dev/ttyAMA*   <span class="cm"># expected: group column shows dialout</s
     <div>
       <h3 style="margin-top:0">Software</h3>
       <div id="chk-list">
-        <div class="cl-item" onclick="toggleChk(this)"><div class="cl-box">✓</div><span>System packages installed: <code>python3-picamera2 tesseract-ocr libcap-dev i2c-tools</code></span></div>
-        <div class="cl-item" onclick="toggleChk(this)"><div class="cl-box">✓</div><span>IMX708 camera enabled in <code>/boot/firmware/config.txt</code> (<code>camera_auto_detect=0</code>, <code>dtoverlay=imx708</code>) and <code>libcamera-hello --list-cameras</code> shows <code>IMX708</code></span></div>
+        <div class="cl-item" onclick="toggleChk(this)"><div class="cl-box">✓</div><span>System packages installed: <code>tesseract-ocr libcap-dev i2c-tools</code></span></div>
+        <div class="cl-item" onclick="toggleChk(this)"><div class="cl-box">✓</div><span>USB camera plugged in and visible — <code>ls /dev/video*</code> shows a device (e.g. <code>/dev/video0</code>)</span></div>
         <div class="cl-item" onclick="toggleChk(this)"><div class="cl-box">✓</div><span>Virtual environment created and active (<code>source aeroclean_env/bin/activate</code>)</span></div>
         <div class="cl-item" onclick="toggleChk(this)"><div class="cl-box">✓</div><span>Python packages installed inside venv: <code>pip install -r requirements.txt</code></span></div>
         <div class="cl-item" onclick="toggleChk(this)"><div class="cl-box">✓</div><span>Serial login shell disabled — <code>console=serial0,115200</code> removed from <code>cmdline.txt</code> and getty service stopped</span></div>
@@ -785,7 +779,7 @@ python main.py --model yolo --source clip.mp4</pre>
 <!-- ── Screen 6: Collect Data ─────────────────────────────────────── -->
 <div class="screen" data-screen="6">
   <h1 class="ai">Collect <span class="accent">Training Data</span></h1>
-  <p class="ai">Run <code>collect_data.py</code> on the Pi to capture images directly from the IMX708 camera.</p>
+  <p class="ai">Run <code>collect_data.py</code> on the Pi to capture images directly from the OV2311 USB camera.</p>
 
   <div class="grid-2 ai" style="max-width:840px;align-items:start;gap:18px">
     <div>
@@ -996,7 +990,7 @@ unzip best_ncnn_model.zip -d best_ncnn_model</pre>
         <thead><tr><th>Key</th><th>Default</th><th>Description</th></tr></thead>
         <tbody>
           <tr><td><code>resolution</code></td><td><code>[1920, 1080]</code></td><td>Camera capture resolution [width, height]</td></tr>
-          <tr><td><code>framerate</code></td><td><code>30</code></td><td>Camera FPS — 30 is the IMX708 default</td></tr>
+          <tr><td><code>framerate</code></td><td><code>50</code></td><td>Camera FPS — 50 is the OV2311 native rate</td></tr>
           <tr><td><code>board_roi</code></td><td><code>null</code></td><td>[x, y, w, h] crop for OCR. null = full frame</td></tr>
           <tr><td><code>ocr_interval_s</code></td><td><code>2.5</code></td><td>Min seconds between Tesseract runs</td></tr>
           <tr><td><code>ocr_scale</code></td><td><code>0.5</code></td><td>Downscale before OCR. 0.5 = 960×540 from 1920×1080</td></tr>
@@ -1123,7 +1117,7 @@ Camera → BGR frame
 <span class="pi">┌─────────────────────────────────────────┐
 │           Raspberry Pi 5                │
 │                                         │
-│  IMX708 Camera     →  YOLO / OCR        │
+│  OV2311 USB Camera →  YOLO / OCR        │
 │  TF-Luna  (UART)   →  forward range (A) │
 │  VL53L3CX (I2C)    →  forward range (B) │
 │  Mission state machine                  │

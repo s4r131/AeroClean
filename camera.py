@@ -1,22 +1,14 @@
 """
-camera.py — Arducam / Raspberry Pi Camera Module 3 (IMX708) capture wrapper.
+camera.py — Arducam 2MP Global Shutter USB Camera (OV2311) capture wrapper.
 
-Uses picamera2 (libcamera backend, pre-installed on RPi OS Bookworm).
+Uses OpenCV VideoCapture (UVC) — no picamera2 or libcamera required.
 Returns BGR numpy arrays compatible with OpenCV and Ultralytics.
 """
 
 import json
-import numpy as np
 
-# picamera2 is only available on the Raspberry Pi.
-# On other platforms the import will fail — main.py handles this gracefully
-# when --source is used for offline testing.
-try:
-    from picamera2 import Picamera2
-    from libcamera import controls as libcontrols
-    PICAMERA_AVAILABLE = True
-except ImportError:
-    PICAMERA_AVAILABLE = False
+import cv2
+import numpy as np
 
 
 def _load_config(path: str = "config.json") -> dict:
@@ -26,7 +18,7 @@ def _load_config(path: str = "config.json") -> dict:
 
 class Camera:
     """
-    Thin wrapper around picamera2 for the IMX708 sensor.
+    Thin wrapper around cv2.VideoCapture for the OV2311 USB camera.
 
     Usage:
         cam = Camera()
@@ -40,45 +32,35 @@ class Camera:
     """
 
     def __init__(self, config_path: str = "config.json"):
-        if not PICAMERA_AVAILABLE:
-            raise RuntimeError(
-                "picamera2 is not installed. On the Raspberry Pi run:\n"
-                "  sudo apt install python3-picamera2\n"
-                "On a desktop use --source <image_or_video> for offline testing."
-            )
-
         cfg = _load_config(config_path)
-        self._width, self._height = cfg.get("resolution", [1920, 1080])
-        self._framerate = cfg.get("framerate", 30)
+        self._width, self._height = cfg.get("resolution", [1280, 720])
+        self._framerate = cfg.get("framerate", 50)
+        device = cfg.get("camera_device", 0)
 
-        self._cam = Picamera2()
-        video_cfg = self._cam.create_video_configuration(
-            main={"size": (self._width, self._height), "format": "RGB888"},
-            controls={"FrameRate": self._framerate},
-        )
-        self._cam.configure(video_cfg)
+        self._cap = cv2.VideoCapture(device)
+        self._cap.set(cv2.CAP_PROP_FRAME_WIDTH,  self._width)
+        self._cap.set(cv2.CAP_PROP_FRAME_HEIGHT, self._height)
+        self._cap.set(cv2.CAP_PROP_FPS,          self._framerate)
 
-        # IMX708 supports Contrast Detection Auto-Focus (CDAF)
-        self._cam.set_controls({
-            "AfMode": libcontrols.AfModeEnum.Continuous,
-            "AfSpeed": libcontrols.AfSpeedEnum.Fast,
-        })
+        if not self._cap.isOpened():
+            raise RuntimeError(
+                f"Could not open USB camera at device index {device}.\n"
+                "  Run: ls /dev/video* to list available devices,\n"
+                "  then set camera_device in config.json to the correct index."
+            )
 
     # ------------------------------------------------------------------
     # Lifecycle
     # ------------------------------------------------------------------
 
     def start(self):
-        """Start the camera stream."""
-        self._cam.start()
+        """No-op — VideoCapture opens on __init__."""
 
     def stop(self):
-        """Stop the camera stream and release resources."""
-        self._cam.stop()
-        self._cam.close()
+        """Release the camera."""
+        self._cap.release()
 
     def __enter__(self):
-        self.start()
         return self
 
     def __exit__(self, *_):
@@ -95,9 +77,10 @@ class Camera:
         Returns:
             numpy ndarray, BGR, shape (H, W, 3) — OpenCV convention.
         """
-        rgb = self._cam.capture_array()   # RGB from picamera2
-        bgr = rgb[:, :, ::-1].copy()      # flip to BGR for OpenCV
-        return bgr
+        ret, frame = self._cap.read()
+        if not ret:
+            raise RuntimeError("Camera read failed — check USB connection.")
+        return frame
 
     @property
     def resolution(self) -> tuple[int, int]:

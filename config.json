@@ -3,11 +3,14 @@
 
   "_s1": "── Camera ───────────────────────────────────────────────────────────────",
 
-  "resolution": [1920, 1080],
-  "resolution_note": "Camera capture resolution [width, height]. 1920x1080 (full HD) is the IMX708 default and gives the best image quality. Lower to [1280, 720] or [960, 540] if frame capture is a bottleneck — YOLO resizes internally to 640x640 so inference time is barely affected, but OCR and display will be faster. If you change this, update frame_width_px and frame_height_px in the mission block to match.",
-  
-  "framerate": 30,
-  "framerate_note": "Camera frames per second. 30 is the IMX708 default. Reduce to 15 on a heavily loaded Pi to free CPU between frames.",
+  "camera_device": 0,
+  "camera_device_note": "USB camera device index. Run: ls /dev/video* before plugging in the camera, then again after — the new entry that appears is your device (e.g. /dev/video0 → index 0, /dev/video2 → index 2). Default 0 is correct if no other USB video devices are connected.",
+
+  "resolution": [1280, 720],
+  "resolution_note": "Camera capture resolution [width, height]. [1280, 720] is the recommended default for the OV2311 — balances image quality with Pi CPU headroom at 50 fps. Raise to [1600, 1200] for full native resolution if the Pi is not bottlenecked. If you change this, update frame_width_px and frame_height_px in the mission block to match.",
+
+  "framerate": 50,
+  "framerate_note": "Camera frames per second. 50 is the OV2311 native rate. Reduce to 30 on a heavily loaded Pi to free CPU between frames.",
 
 
   "_s2": "── OCR  (Model 1 — Tesseract) ───────────────────────────────────────────",
@@ -125,10 +128,10 @@
     "cleaning_cooldown_s": 5.0,
     "cleaning_cooldown_s_note": "Preflight test only. Minimum seconds between cleaning cycles. Prevents re-triggering on every dirty frame.",
 
-    "frame_width_px": 1920,
+    "frame_width_px": 1280,
     "frame_width_px_note": "Frame width used by the approach P controller to compute pixel error from centre. Must match resolution[0] above.",
 
-    "frame_height_px": 1080,
+    "frame_height_px": 720,
     "frame_height_px_note": "Frame height used by the approach P controller. Must match resolution[1] above."
   }
 }

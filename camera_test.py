@@ -32,14 +32,14 @@ def _banner(groups: list[list[str]]) -> None:
 
 
 def main() -> None:
-    p = argparse.ArgumentParser(description="Pi camera live test")
+    p = argparse.ArgumentParser(description="USB camera live test")
     p.add_argument("--config", default="config.json")
     args = p.parse_args()
 
     _banner([
         [
             "AeroClean — Camera Test",
-            "Verifies IMX708 is detected and delivering frames",
+            "Verifies USB camera (OV2311) is detected and delivering frames",
         ],
         [
             "Expect : FPS prints only when value changes — stable camera goes silent",
