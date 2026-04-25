@@ -11,6 +11,10 @@
 opencv-python>=4.9.0
 numpy>=1.26.0
 
+# Pi camera — Camera B (IMX708 CSI) only. Not needed for Camera A (OV2311 USB).
+# Requires libcamera system libraries on Pi: sudo apt install python3-picamera2
+picamera2>=0.3.0
+
 # OCR (Model 1)
 pytesseract>=0.3.10
 # Also install the Tesseract binary:

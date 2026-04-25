@@ -15,12 +15,11 @@
 | 9 | JHEMCU ExpressLRS RX24T 2.4G ELRS Nano Receiver | AliExpress | 1 | $16.27 | $17.86 |
 | 10 | JESSINIE TFmini-S LiDAR Sensor — UART/I2C 0.1–12m | Amazon | 1 | — | $48.24 |
 | 11 | MicoAir MTF-02P Optical Flow & Range Sensor | Amazon | 1 | — | $31.83 |
-| 12 | Arducam IMX708 12MP Pi Camera V3 — 75° AF | Amazon | 1 | — | $35.12 |
-| 13 | Arducam Pi Zero Camera Ribbon Cable Set 30cm (2-pack) | Amazon | 1 | — | $10.96 |
-| 14 | BZGNSS BZ-251 Dual Protocol GPS Module | Amazon | 1 | — | $20.84 |
-| 15 | TATTU R-Line V5.0 2200mAh 6S 150C LiPo Battery (2-pack) | Amazon | 1 | — | $104.68 |
+| 12 | Arducam 2MP Global Shutter USB Camera 50fps OV2311 Monochrome UVC — M12 Lens, No Mic | Amazon | 1 | — | $108.64 |
+| 13 | BZGNSS BZ-251 Dual Protocol GPS Module | Amazon | 1 | — | $20.84 |
+| 14 | TATTU R-Line V5.0 2200mAh 6S 150C LiPo Battery (2-pack) | Amazon | 1 | — | $104.68 |
 
-**Drone Subtotal: $804.40**
+**Drone Subtotal: $866.96**
 
 ---
 
@@ -37,9 +36,9 @@
 
 | Category | Total |
 |----------|-------|
-| Drone Components | $804.40 |
+| Drone Components | $866.96 |
 | Ground Support | TBD |
-| **Grand Total** | **~$804.40+** |
+| **Grand Total** | **~$866.96+** |
 
 ---
 

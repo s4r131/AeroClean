@@ -3,11 +3,14 @@
 
   "_s1": "── Camera ───────────────────────────────────────────────────────────────",
 
+  "camera_type": "a",
+  "camera_type_note": "Which camera is wired: 'a' = OV2311 USB (default, cv2.VideoCapture) | 'b' = IMX708 CSI (picamera2). Camera A needs camera_device set below. Camera B needs python3-picamera2 installed and dtoverlay=imx708 in /boot/firmware/config.txt.",
+
   "camera_device": 0,
   "camera_device_note": "USB camera device index. Run: ls /dev/video* before plugging in the camera, then again after — the new entry that appears is your device (e.g. /dev/video0 → index 0, /dev/video2 → index 2). Default 0 is correct if no other USB video devices are connected.",
 
-  "resolution": [1280, 720],
-  "resolution_note": "Camera capture resolution [width, height]. [1280, 720] is the recommended default for the OV2311 — balances image quality with Pi CPU headroom at 50 fps. Raise to [1600, 1200] for full native resolution if the Pi is not bottlenecked. If you change this, update frame_width_px and frame_height_px in the mission block to match.",
+  "resolution": [1600, 1200],
+  "resolution_note": "Camera capture resolution [width, height]. [1600, 1200] is the OV2311 native max and the default. Lower to [1280, 720] if the Pi is CPU-bottlenecked at full resolution. If you change this, update frame_width_px and frame_height_px in the mission block to match.",
 
   "framerate": 50,
   "framerate_note": "Camera frames per second. 50 is the OV2311 native rate. Reduce to 30 on a heavily loaded Pi to free CPU between frames.",
@@ -22,7 +25,7 @@
   "ocr_frame_interval_note": "Run Tesseract every N frames. Frames between runs return the cached result instantly. Raise to 8–10 to reduce CPU load; lower to 3 for more responsive detection. At 30 fps, 5 = ~6 OCR runs/s.",
 
   "ocr_scale": 0.5,
-  "ocr_scale_note": "Scale factor applied before OCR preprocessing. 0.5 = 960x540 from 1920x1080. Try 0.25 (480x270) if OCR is still slow — whiteboard marker text is large enough at quarter resolution. Do not go below 0.25 or word detection degrades.",
+  "ocr_scale_note": "Scale factor applied before OCR preprocessing. 0.5 = 800x600 from 1600x1200. Try 0.25 (400x300) if OCR is still slow — whiteboard marker text is large enough at quarter resolution. Do not go below 0.25 or word detection degrades.",
 
 
   "_s3": "── YOLO  (Model 2 — NCNN object detector) ───────────────────────────────",
@@ -128,10 +131,10 @@
     "cleaning_cooldown_s": 5.0,
     "cleaning_cooldown_s_note": "Preflight test only. Minimum seconds between cleaning cycles. Prevents re-triggering on every dirty frame.",
 
-    "frame_width_px": 1280,
+    "frame_width_px": 1600,
     "frame_width_px_note": "Frame width used by the approach P controller to compute pixel error from centre. Must match resolution[0] above.",
 
-    "frame_height_px": 720,
+    "frame_height_px": 1200,
     "frame_height_px_note": "Frame height used by the approach P controller. Must match resolution[1] above."
   }
 }

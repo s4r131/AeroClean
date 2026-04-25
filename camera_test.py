@@ -1,7 +1,8 @@
 """
-camera_test.py — Pi camera live test.
+camera_test.py — Camera live test (Camera A: OV2311 USB  |  Camera B: IMX708 CSI).
 
 Shows a live OpenCV window and prints FPS to the terminal.
+Camera type is read from camera_type in config.json ('a' = OV2311, 'b' = IMX708).
 
 Usage:
     python camera_test.py
@@ -32,14 +33,21 @@ def _banner(groups: list[list[str]]) -> None:
 
 
 def main() -> None:
-    p = argparse.ArgumentParser(description="USB camera live test")
+    p = argparse.ArgumentParser(description="Camera live test (A: OV2311 USB | B: IMX708 CSI)")
     p.add_argument("--config", default="config.json")
     args = p.parse_args()
+
+    import json
+    with open(args.config) as f:
+        _cfg = json.load(f)
+    camera_type = str(_cfg.get("camera_type", "a")).lower()
+    cam_desc = "Camera A — OV2311 USB (cv2.VideoCapture)" if camera_type == "a" \
+               else "Camera B — IMX708 CSI (picamera2)"
 
     _banner([
         [
             "AeroClean — Camera Test",
-            "Verifies USB camera (OV2311) is detected and delivering frames",
+            f"Verifies {cam_desc} is delivering frames",
         ],
         [
             "Expect : FPS prints only when value changes — stable camera goes silent",
