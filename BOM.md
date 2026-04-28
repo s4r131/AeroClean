@@ -4,10 +4,10 @@
 
 | # | Component | Vendor | Qty | Unit Price | Total |
 |---|-----------|--------|-----|-----------|-------|
-| 1 | Gemfan Flash 7040 Tri-Blade 7" Props (4-pack) — Clear Black | GetFPV | 4 packs | $4.99 | $19.96 |
-| 2 | RadioMaster TX16S MK3 ELRS Gemini 2.4GHz + 900MHz Radio Controller — Black | GetFPV | 1 | $229.99 | $229.99 |
-| 3 | Skystars RC 4-36V → 5V/12V 3.5A Step-Down Voltage Regulator | GetFPV | 2 | $12.99 | $25.98 |
-| 4 | Matek H743-Slim V4 Flight Controller 30×30mm | GetFPV | 1 | $122.99 | $122.99 |
+| 1 | Gemfan Flash 7040 Tri-Blade 7" Props (4-pack) — Clear Black | Pyrodrone | 4 packs | $4.99 | $19.96 |
+| 2 | RadioMaster TX16S MK3 ELRS Gemini 2.4GHz + 900MHz Radio Controller — Black | Pyrodrone | 1 | $229.99 | $229.99 |
+| 3 | Skystars RC 4-36V → 5V/12V 3.5A Step-Down Voltage Regulator | Pyrodrone | 2 | $12.99 | $25.98 |
+| 4 | Matek H743-Slim V4 Flight Controller 30×30mm | Pyrodrone | 1 | $122.99 | $122.99 |
 | 5 | Mark4 7" 295mm 5mm Arm Quadcopter Frame — 3K Carbon Fiber | AliExpress | 1 | $24.18 | $26.54 |
 | 6 | RUSH Solo Tank 5.8G VTX 1.6W — 48CH | AliExpress | 1 | $42.15 | $46.26 |
 | 7 | YSIDO FPV Antenna 5.8GHz 3dBi RHCP 110mm SMA | AliExpress | 1 | $5.04 | $5.53 |
