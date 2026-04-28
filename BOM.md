@@ -4,10 +4,10 @@
 
 | # | Component | Vendor | Qty | Unit Price | Total |
 |---|-----------|--------|-----|-----------|-------|
-| 1 | Gemfan Flash 7040 Tri-Blade 7" Props (4-pack) — Clear Black | GetFPV | 4 packs | $4.99 | $19.96 |
-| 2 | RadioMaster TX16S MK3 ELRS Gemini 2.4GHz + 900MHz Radio Controller — Black | GetFPV | 1 | $229.99 | $229.99 |
-| 3 | Skystars RC 4-36V → 5V/12V 3.5A Step-Down Voltage Regulator | GetFPV | 2 | $12.99 | $25.98 |
-| 4 | Matek H743-Slim V4 Flight Controller 30×30mm | GetFPV | 1 | $122.99 | $122.99 |
+| 1 | Gemfan Flash 7040 Tri-Blade 7" Props (4-pack) — Clear Black | Pyrodrone | 4 packs | $4.99 | $19.96 |
+| 2 | RadioMaster TX16S MK3 ELRS Gemini 2.4GHz + 900MHz Radio Controller — Black | Pyrodrone | 1 | $229.99 | $229.99 |
+| 3 | Skystars RC 4-36V → 5V/12V 3.5A Step-Down Voltage Regulator | Pyrodrone | 2 | $12.99 | $25.98 |
+| 4 | Matek H743-Slim V4 Flight Controller 30×30mm | Pyrodrone | 1 | $122.99 | $122.99 |
 | 5 | Mark4 7" 295mm 5mm Arm Quadcopter Frame — 3K Carbon Fiber | AliExpress | 1 | $24.18 | $26.54 |
 | 6 | RUSH Solo Tank 5.8G VTX 1.6W — 48CH | AliExpress | 1 | $42.15 | $46.26 |
 | 7 | YSIDO FPV Antenna 5.8GHz 3dBi RHCP 110mm SMA | AliExpress | 1 | $5.04 | $5.53 |
@@ -15,11 +15,13 @@
 | 9 | JHEMCU ExpressLRS RX24T 2.4G ELRS Nano Receiver | AliExpress | 1 | $16.27 | $17.86 |
 | 10 | JESSINIE TFmini-S LiDAR Sensor — UART/I2C 0.1–12m | Amazon | 1 | — | $48.24 |
 | 11 | MicoAir MTF-02P Optical Flow & Range Sensor | Amazon | 1 | — | $31.83 |
-| 12 | Arducam 2MP Global Shutter USB Camera 50fps OV2311 Monochrome UVC — M12 Lens, No Mic | Amazon | 1 | — | $108.64 |
-| 13 | BZGNSS BZ-251 Dual Protocol GPS Module | Amazon | 1 | — | $20.84 |
-| 14 | TATTU R-Line V5.0 2200mAh 6S 150C LiPo Battery (2-pack) | Amazon | 1 | — | $104.68 |
+| 12 | Raspberry Pi 5 8GB | Amazon | 1 | $199.97 | $199.97 |
+| 13 | Arducam 2MP Global Shutter USB Camera 50fps OV2311 Monochrome UVC | Amazon | 1 | $98.99 | $98.99 |
+| 14 | BZGNSS BZ-251 Dual Protocol GPS Module | Amazon | 1 | — | $20.84 |
+| 15 | TATTU R-Line V5.0 2200mAh 6S 150C LiPo Battery (2-pack) | Amazon | 1 | — | $104.68 |
+| 16 | ZORZA UBEC 5V 5A Step-Down Voltage Regulator 2-7S (2-pack) | Amazon | 1 | $9.99 | $9.99 |
 
-**Drone Subtotal: $866.96**
+**Drone Subtotal: $1,067.27**
 
 ---
 
@@ -36,9 +38,9 @@
 
 | Category | Total |
 |----------|-------|
-| Drone Components | $866.96 |
+| Drone Components | $1,067.27 |
 | Ground Support | TBD |
-| **Grand Total** | **~$866.96+** |
+| **Grand Total** | **~$1,067.27+** |
 
 ---
 
