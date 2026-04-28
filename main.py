@@ -41,7 +41,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p.add_argument(
         "--model", choices=["ocr", "yolo"], default="ocr",
-        help="Which model to run (inference mode only):\n  ocr  — Tesseract OCR (finds word 'dirty') [default]\n  yolo — YOLO11n board-state detector",
+        help="Which model to run (inference mode only):\n  ocr  — Tesseract OCR (finds word 'dirty') [default]\n  yolo — YOLO26n board-state detector",
     )
     p.add_argument(
         "--source", default=None,
@@ -159,7 +159,7 @@ def main():
     else:
         from yolo_model import YOLOModel
         model = YOLOModel(config_path=args.config, conf_override=args.conf)
-        print("[INFO] YOLO11n model loaded — detecting board state")
+        print("[INFO] YOLO26n model loaded — detecting board state")
 
     # ── Choose frame source ──────────────────────────────────────────────────
     if args.source:

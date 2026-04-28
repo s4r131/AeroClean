@@ -256,7 +256,7 @@ select:focus,input[type=number]:focus{outline:none;border-color:#3b82f6;box-shad
       </svg>
     </div>
     <h1 style="margin-bottom:4px">AeroClean <span class="accent">System Guide</span></h1>
-    <p style="font-size:14px;max-width:520px;margin:0;color:#475569">Autonomous board-cleaning drone — Raspberry Pi 5 companion computer, YOLO11n detection, Tesseract OCR, ArduPilot GUIDED mode.</p>
+    <p style="font-size:14px;max-width:520px;margin:0;color:#475569">Autonomous board-cleaning drone — Raspberry Pi 5 companion computer, YOLO26n detection, Tesseract OCR, ArduPilot GUIDED mode.</p>
   </div>
 
   <div class="grid-4 ai" style="margin-bottom:14px">
@@ -288,11 +288,11 @@ select:focus,input[type=number]:focus{outline:none;border-color:#3b82f6;box-shad
       <div style="display:flex;flex-direction:column;gap:8px">
         <div class="card card-h" style="display:flex;align-items:center;gap:12px;padding:12px 16px">
           <div style="width:36px;height:36px;background:linear-gradient(135deg,#eff6ff,#dbeafe);border-radius:9px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:17px">🔤</div>
-          <div><div style="font-weight:700;color:#0f172a;font-size:13px">Model 1 — OCR (Tesseract)</div><div style="color:#64748b;font-size:12px;margin-top:2px">Finds the word <code>"dirty"</code> on the board surface using greyscale → CLAHE → adaptive threshold → morph close</div></div>
+          <div><div style="font-weight:700;color:#0f172a;font-size:13px">Model 1 — OCR (Tesseract)</div><div style="color:#64748b;font-size:12px;margin-top:2px">Finds the word <code>"dirty"</code> on the board · frame-count throttle every 5th frame · 1.5s dirty-hold to prevent flicker · returns <code>(dirty: bool, annotated_frame)</code></div></div>
         </div>
         <div class="card card-h" style="display:flex;align-items:center;gap:12px;padding:12px 16px">
           <div style="width:36px;height:36px;background:linear-gradient(135deg,#f5f3ff,#ede9fe);border-radius:9px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:17px">🎯</div>
-          <div><div style="font-weight:700;color:#0f172a;font-size:13px">Model 2 — YOLO11n NCNN</div><div style="color:#64748b;font-size:12px;margin-top:2px">Custom-trained detection — classifies board as <code>clean_board</code> or <code>dirty_board</code> with bounding box</div></div>
+          <div><div style="font-weight:700;color:#0f172a;font-size:13px">Model 2 — YOLO26n NCNN</div><div style="color:#64748b;font-size:12px;margin-top:2px">Custom-trained detector · <code>dirty_board</code> class · 640×640 input · conf 0.45 · ARM NCNN ~68ms · returns <code>(dirty: bool, annotated_frame)</code></div></div>
         </div>
       </div>
     </div>
@@ -725,29 +725,30 @@ python main.py --model ocr --source board.jpg --once</pre>
 
 <!-- ── Screen 5: YOLO Model ───────────────────────────────────────── -->
 <div class="screen" data-screen="5">
-  <h1 class="ai">Model 2 — <span class="accent">YOLO11n</span></h1>
+  <h1 class="ai">Model 2 — <span class="accent">YOLO26n</span></h1>
   <p class="ai">Custom-trained detection model exported to NCNN. Classifies the board as <code>clean_board</code> or <code>dirty_board</code> with a bounding box and confidence score.</p>
 
   <div class="grid-2 ai" style="max-width:840px;align-items:start;gap:18px">
     <div>
-      <h3 style="margin-top:0">Why YOLO11n?</h3>
+      <h3 style="margin-top:0">Why YOLO26n?</h3>
       <table class="dep-table">
-        <thead><tr><th>Model</th><th>Params</th><th>mAP50</th><th>Pi 5 latency</th></tr></thead>
+        <thead><tr><th>Model</th><th>Params</th><th>mAP50-95</th><th>Pi 5 NCNN latency</th></tr></thead>
         <tbody>
           <tr><td>YOLOv8n</td><td>3.2M</td><td>37.3%</td><td>~120 ms</td></tr>
-          <tr><td><strong>YOLO11n</strong></td><td><strong>2.6M</strong></td><td><strong>39.5%</strong></td><td><strong>~80 ms</strong> <span class="badge bp">This project</span></td></tr>
+          <tr><td>YOLO11n</td><td>2.6M</td><td>39.5%</td><td>~80 ms</td></tr>
+          <tr><td><strong>YOLO26n</strong></td><td><strong>2.6M</strong></td><td><strong>40.1%</strong></td><td><strong>~68 ms</strong> <span class="badge bp">This project</span></td></tr>
         </tbody>
       </table>
-      <p style="font-size:12.5px;color:#475569;margin-top:6px">YOLO11n is both smaller and more accurate than YOLOv8n — the right choice for a resource-constrained device.</p>
+      <p style="font-size:12.5px;color:#475569;margin-top:6px">YOLO26n is the fastest and most accurate nano variant — the right choice for a resource-constrained device.</p>
 
       <h3>Model family sizes</h3>
       <table class="dep-table">
-        <thead><tr><th>Variant</th><th>Params</th><th>mAP50</th><th>Notes</th></tr></thead>
+        <thead><tr><th>Variant</th><th>mAP50-95</th><th>Notes</th></tr></thead>
         <tbody>
-          <tr><td><strong>11n</strong></td><td>2.6M</td><td>39.5%</td><td><span class="badge bp">Used here</span></td></tr>
-          <tr><td>11s</td><td>9.4M</td><td>47.0%</td><td>~3× more compute</td></tr>
-          <tr><td>11m</td><td>20.1M</td><td>51.5%</td><td>Desktop only</td></tr>
-          <tr><td>11l / 11x</td><td>25–57M</td><td>53–55%</td><td>Requires GPU</td></tr>
+          <tr><td><strong>26n</strong></td><td>40.1%</td><td><span class="badge bp">Used here</span></td></tr>
+          <tr><td>26s</td><td>47.8%</td><td>~3× more compute</td></tr>
+          <tr><td>26m</td><td>52.5%</td><td>Desktop only</td></tr>
+          <tr><td>26l / 26x</td><td>54–57%</td><td>Requires GPU</td></tr>
         </tbody>
       </table>
 
@@ -765,7 +766,7 @@ python main.py --model yolo --source clip.mp4</pre>
       <h3 style="margin-top:0">Export format: NCNN</h3>
       <div class="callout info">
         <span class="icon">⚡</span>
-        <div>NCNN is a neural network inference framework optimised for ARM CPUs. Exporting to NCNN gives approximately <strong>2× faster inference</strong> on Pi 5 with no GPU required.</div>
+        <div>NCNN is a neural network inference framework optimised for ARM CPUs. It is the fastest export format on the Raspberry Pi 5 — <strong>~68ms per frame</strong> at 640×640 with no GPU required.</div>
       </div>
 
       <h3>Classes</h3>
@@ -791,8 +792,8 @@ python main.py --model yolo --source clip.mp4</pre>
       <table class="dep-table">
         <thead><tr><th>Variant</th><th>Weights</th></tr></thead>
         <tbody>
-          <tr><td><strong>Detection</strong></td><td><code>yolo11n.pt</code> <span class="badge bp">Used here</span></td></tr>
-          <tr><td>OBB / Segmentation / Pose / Classification</td><td><code>yolo11n-{obb,seg,pose,cls}.pt</code></td></tr>
+          <tr><td><strong>Detection</strong></td><td><code>yolo26n.pt</code> <span class="badge bp">Used here</span></td></tr>
+          <tr><td>OBB / Segmentation / Pose / Classification</td><td><code>yolo26n-{obb,seg,pose,cls}.pt</code></td></tr>
         </tbody>
       </table>
     </div>
@@ -908,7 +909,7 @@ python main.py --model yolo --source clip.mp4</pre>
       <div class="code-block">
         <div class="code-header"><span class="code-lang">python</span><button class="copy-btn" onclick="cc(this)">Copy</button></div>
         <pre><span class="kw">from</span> ultralytics <span class="kw">import</span> <span class="fn">YOLO</span>
-model = <span class="fn">YOLO</span>(<span class="str">'yolo11n.pt'</span>)
+model = <span class="fn">YOLO</span>(<span class="str">'yolo26n.pt'</span>)
 model.<span class="fn">train</span>(
     data=<span class="str">'dataset.yaml'</span>,
     epochs=<span class="nu">100</span>,

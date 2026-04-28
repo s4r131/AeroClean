@@ -1,5 +1,5 @@
 """
-yolo_model.py — Model 2: YOLO11n board-state detector.
+yolo_model.py — Model 2: YOLO26n board-state detector.
 
 Detects two classes:
     0  clean_board  — erased, usable board surface
@@ -7,9 +7,9 @@ Detects two classes:
 
 Model
 -----
-YOLO11n (Ultralytics 2024) exported to NCNN format for Raspberry Pi 5.
+YOLO26n (Ultralytics 2026) exported to NCNN format for Raspberry Pi 5.
 NCNN runs entirely on the ARM Cortex-A76 CPU — no GPU required.
-Inference is ~2× faster than raw PyTorch on the Pi.
+NCNN is the fastest export format on Pi 5 (~68ms/frame at 640×640).
 
 Weights expected at: weights/best_ncnn_model/  (see README — Training)
 
@@ -92,7 +92,7 @@ def _draw_detection(frame: np.ndarray, detection: dict | None) -> np.ndarray:
 
 class YOLOModel:
     """
-    YOLO11n inference wrapper for board-state detection.
+    YOLO26n inference wrapper for board-state detection.
 
     Usage:
         model = YOLOModel()
@@ -149,7 +149,7 @@ class YOLOModel:
         annotated : np.ndarray
             Copy of frame with drawn bounding box and status overlay.
         """
-        results = self._model.predict(frame, conf=self._conf, verbose=False)
+        results = self._model.predict(frame, conf=self._conf, imgsz=640, verbose=False)
         detection = self._parse(results)
         annotated = _draw_detection(frame, detection)
         return detection, annotated

@@ -1,6 +1,6 @@
 # AeroClean
 
-Autonomous MAVLink drone that cleans dirty dry-erase boards. A **Raspberry Pi 5** acts as the companion computer — running a **YOLO11n object detector** and/or a **Tesseract OCR pipeline** to detect board state, then commanding an **ArduPilot** flight controller over UART to take off, scan the room, approach the board, and trigger a pump to clean it.
+Autonomous MAVLink drone that cleans dirty dry-erase boards. A **Raspberry Pi 5** acts as the companion computer — running a **YOLO26n object detector** and/or a **Tesseract OCR pipeline** to detect board state, then commanding an **ArduPilot** flight controller over UART to take off, scan the room, approach the board, and trigger a pump to clean it.
 
 ---
 
@@ -56,7 +56,7 @@ AeroClean/
 ├── main.py               # Entry point — --mode mission | --model ocr | yolo
 ├── camera.py             # Camera wrapper — Camera A: OV2311 USB (cv2.VideoCapture) | Camera B: IMX708 CSI (picamera2)
 ├── ocr_model.py          # Model 1: Tesseract OCR pipeline
-├── yolo_model.py         # Model 2: YOLO11n NCNN inference
+├── yolo_model.py         # Model 2: YOLO26n NCNN inference
 ├── mission.py            # Autonomous mission state machine (IDLE→SCAN→APPROACH→CLEAN→RETURN)
 ├── mavlink_controller.py # pymavlink wrapper — arm, takeoff, velocity commands, RTL
 ├── sensors.py            # TF-Luna/TFMini UART range (sensor A, default) + VL53L3CX I2C range (sensor B)
@@ -935,24 +935,25 @@ Matched words are highlighted with red bounding boxes; unmatched frames show a g
 
 ---
 
-### Model 2 — YOLO11n board detector
+### Model 2 — YOLO26n board detector
 
 The YOLO model classifies the board as `clean_board` or `dirty_board` and draws a bounding box around it.
 
-#### Why YOLO11n?
+#### Why YOLO26n?
 
-YOLO11n is the latest nano variant from Ultralytics. It was chosen over YOLOv8n for this project because:
+YOLO26n is the 2026 nano variant from Ultralytics. It was chosen for this project because it is the fastest and most accurate nano model on ARM hardware:
 
-| Model | Parameters | mAP50 (COCO) | Latency on RPi 5 CPU (NCNN) |
+| Model | Parameters | mAP50-95 (COCO) | Latency on RPi 5 (NCNN) |
 |---|---|---|---|
 | YOLOv8n | 3.2M | 37.3% | ~120 ms |
 | YOLO11n | 2.6M | 39.5% | ~80 ms |
+| YOLO26n | 2.6M | 40.1% | ~68 ms |
 
-YOLO11n is both smaller and more accurate than YOLOv8n — the right choice for a resource-constrained device.
+YOLO26n delivers the best speed and accuracy of any nano variant — the right choice for a resource-constrained device.
 
 #### Export format: NCNN
 
-NCNN is a neural network inference framework optimised for ARM CPUs. Exporting to NCNN instead of running raw PyTorch gives approximately 2× faster inference on the Raspberry Pi 5 with no GPU required.
+NCNN is a neural network inference framework optimised for ARM CPUs. It is the fastest export format on the Raspberry Pi 5, achieving ~68ms per frame at 640×640 with no GPU required.
 
 #### Classes
 
@@ -961,15 +962,15 @@ NCNN is a neural network inference framework optimised for ARM CPUs. Exporting t
 | 0 | `clean_board` | Erased, usable board surface |
 | 1 | `dirty_board` | Marker residue, ghost marks, or heavy smudging |
 
-#### YOLO11 model sizes
+#### YOLO26 model sizes
 
-| Model | Parameters | mAP50 (COCO val) | Notes |
-|---|---|---|---|
-| yolo11n | 2.6M | 39.5% | Used in this project — best speed/accuracy for Pi |
-| yolo11s | 9.4M | 47.0% | Good if you can afford ~3× more compute |
-| yolo11m | 20.1M | 51.5% | Desktop/laptop training only |
-| yolo11l | 25.3M | 53.4% | Requires GPU for practical inference |
-| yolo11x | 56.9M | 54.7% | Highest accuracy; not viable on Pi |
+| Model | mAP50-95 (COCO val) | Notes |
+|---|---|---|
+| yolo26n | 40.1% | Used in this project — best speed/accuracy for Pi |
+| yolo26s | 47.8% | Good if you can afford ~3× more compute |
+| yolo26m | 52.5% | Desktop/laptop training only |
+| yolo26l | 54.4% | Requires GPU for practical inference |
+| yolo26x | 56.9% | Highest accuracy; not viable on Pi |
 
 n = nano · s = small · m = medium · l = large · x = extra-large
 
@@ -977,11 +978,11 @@ n = nano · s = small · m = medium · l = large · x = extra-large
 
 | Variant | Weights file | What it does |
 |---|---|---|
-| Detection | `yolo11n.pt` | Axis-aligned bounding boxes — used in this project |
-| OBB | `yolo11n-obb.pt` | Oriented (rotated) bounding boxes |
-| Segmentation | `yolo11n-seg.pt` | Pixel-level instance masks |
-| Pose | `yolo11n-pose.pt` | Keypoint detection (e.g. human joints) |
-| Classification | `yolo11n-cls.pt` | Whole-image class label, no boxes |
+| Detection | `yolo26n.pt` | Axis-aligned bounding boxes — used in this project |
+| OBB | `yolo26n-obb.pt` | Oriented (rotated) bounding boxes |
+| Segmentation | `yolo26n-seg.pt` | Pixel-level instance masks |
+| Pose | `yolo26n-pose.pt` | Keypoint detection (e.g. human joints) |
+| Classification | `yolo26n-cls.pt` | Whole-image class label, no boxes |
 
 ---
 
