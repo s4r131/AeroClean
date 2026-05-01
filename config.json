@@ -95,7 +95,7 @@
     "mavlink_baud": 57600,
     "mavlink_baud_note": "Baud rate for the ArduPilot MAVLink connection. Must match SERIALx_BAUD on the FC. 57600 is the ArduPilot default for companion computers.",
 
-    "takeoff_altitude_m": 1.5,
+    "takeoff_altitude_m": 0.3,
     "takeoff_altitude_m_note": "Target hover altitude in metres after arming. 1.5 m gives clearance for indoor scanning without hitting the ceiling.",
 
     "scan_yaw_rate_dps": 20.0,
