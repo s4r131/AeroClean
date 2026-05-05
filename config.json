@@ -54,7 +54,7 @@
     "type": "a",
     "type_note": "Which range sensor is wired: 'a' = TF-Luna / TFMini (UART, default)  |  'b' = VL53L3CX (I2C).",
 
-    "uart": null,
+    "uart": "/dev/ttyAMA4",
     "uart_note": "Sensor A — required. UART device path for the TF sensor. Run ls -l /dev/ttyAMA* to list all UARTs. The number matches your dtoverlay line — e.g. dtoverlay=uart3 gives /dev/ttyAMA3.",
 
     "baud": 115200,
@@ -76,10 +76,10 @@
   "wiper": {
     "_note": "Wiper relay settings (wiper.py). GPIO on/off relay: turns on for wipe_duration_s then off. Set wiper_gpio_pin once physically connected.",
 
-    "wiper_gpio_pin": null,
+    "wiper_gpio_pin": 17,
     "wiper_gpio_pin_note": "BCM GPIO pin number wired to the wiper relay IN terminal. Example: 17. Assign once physically connected.",
 
-    "wipe_duration_s": 5.0,
+    "wipe_duration_s": 3.0,
     "wipe_duration_s_note": "How long to run the wiper relay per cleaning cycle (seconds). Wiper turns on for this duration then off."
   },
 
@@ -89,10 +89,10 @@
   "mission": {
     "_note": "Autonomous drone mission settings (python main.py --mode mission). All null values must be filled in before running. Run 'ls -l /dev/ttyAMA*' on the Pi to list all UARTs. Use /dev/ttyAMAX paths — the number matches your dtoverlay=uartX line in config.txt.",
 
-    "mavlink_uart": null,
+    "mavlink_uart": "/dev/ttyAMA0",
     "mavlink_uart_note": "UART port connecting the Pi to the ArduPilot flight controller. Run ls -l /dev/ttyAMA* to find the path — e.g. /dev/ttyAMA0. Must match the FC TELEM port — see README Setup Step 3.",
 
-    "mavlink_baud": 57600,
+    "mavlink_baud": 115200,
     "mavlink_baud_note": "Baud rate for the ArduPilot MAVLink connection. Must match SERIALx_BAUD on the FC. 57600 is the ArduPilot default for companion computers.",
 
     "takeoff_altitude_m": 0.3,
@@ -122,9 +122,8 @@
     "approach_cautious_speed_ms": 0.05,
     "approach_cautious_speed_ms_note": "Forward creep speed used when the range sensor has not yet returned a valid reading. Intentionally very slow.",
 
-    "pump_gpio_pin": null,
+    "pump_gpio_pin": 18,
     "pump_gpio_pin_note": "BCM GPIO pin wired to the pump relay IN terminal. Example: 17. Assign once the relay is physically connected.",
-
     "pump_duration_s": 3.0,
     "pump_duration_s_note": "How long to run the pump during CLEAN (seconds). Runs before the wiper sweep.",
 
