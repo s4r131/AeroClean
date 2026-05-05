@@ -829,13 +829,20 @@ python main.py --mode mission
 ```
 
 The drone will:
-1. Arm and take off to 1.5 m
-2. Yaw-spin slowly to scan the room with YOLO
+1. Arm and take off to the configured altitude
+2. Yaw-spin slowly to scan the room using the configured detection model (`yolo` or `ocr`)
 3. Approach the dirty board (camera centering + range sensor)
-4. Activate the pump to clean
+4. Activate the pump to clean, then actuate the wiper
 5. Return to launch and land
 
-All mission parameters (altitude, speed, pump duration, UART ports, etc.) are in `config.json` under the `"mission"` key.
+All mission parameters (altitude, speed, pump duration, UART ports, detection model, etc.) are in `config.json` under the `"mission"` key. Key parameters:
+
+| Key | Default | Description |
+|---|---|---|
+| `detection_model` | `"yolo"` | Detection model: `"yolo"` (visual, NCNN) or `"ocr"` (text-based, Tesseract) |
+| `clean_timeout_s` | `30.0` | Max seconds in CLEAN state before forcing RETURN |
+| `takeoff_altitude_m` | `0.3` | Target hover altitude in metres |
+| `scan_timeout_s` | `60.0` | Abort scan and return if no board found within this time |
 
 ### Inference mode (vision models, no drone)
 
@@ -894,15 +901,15 @@ Press `q` to quit any live window.
 IDLE → SCAN → APPROACH → CLEAN → RETURN → DONE
          │         │
    timeout→RETURN  └─ board lost → SCAN
-Any exception → ABORTED (safe shutdown + RTL attempted)
+Any exception → ABORTED (safe shutdown + LAND commanded — GPS-denied safe)
 ```
 
 | State | What happens |
 |---|---|
 | **IDLE** | Sets GUIDED mode, arms the flight controller, and initiates takeoff. If ArduPilot rejects the arm command, rejection reasons are printed as `[FC] STATUS: PreArm: ...` lines until the 15 s timeout aborts the mission |
-| **SCAN** | Slow constant yaw spin; YOLO runs on every frame looking for `dirty_board` |
+| **SCAN** | Slow constant yaw spin; runs the model set by `detection_model` (`yolo` or `ocr`) on every frame looking for `dirty_board` |
 | **APPROACH** | **Phase 1 — Align:** holds position (vx=0), corrects lateral/vertical until board is centred within `align_threshold_px`. **Phase 2 — Approach:** drives forward proportionally to remaining distance (`vx = kp_forward × (dist − stop_dist)`), naturally decelerating to zero at the board; stops when the range sensor reads ≤ `approach_stop_dist_m` |
-| **CLEAN** | Holds position; activates pump for `pump_duration_s` seconds, then actuates the wiper arm sweep |
+| **CLEAN** | Holds position; activates pump for `pump_duration_s` seconds, then actuates the wiper arm sweep. Forces RETURN after `clean_timeout_s` if not complete |
 | **RETURN** | Switches ArduPilot to RTL mode; waits for landing |
 | **DONE / ABORTED** | Terminal states — subsystems shut down cleanly |
 
