@@ -125,8 +125,14 @@
     "pump_gpio_pin": null,
     "pump_gpio_pin_note": "BCM GPIO pin wired to the pump relay IN terminal. Example: 17. Assign once the relay is physically connected.",
 
-    "pump_duration_s": 5.0,
+    "pump_duration_s": 3.0,
     "pump_duration_s_note": "How long to run the pump during CLEAN (seconds). Runs before the wiper sweep.",
+
+    "detection_model": "yolo",
+    "detection_model_note": "Which model to use for dirty board detection: 'yolo' = YOLO NCNN (default, faster, visual) | 'ocr' = Tesseract OCR (text-based). Both detect dirty boards and transition through the same states.",
+
+    "clean_timeout_s": 30.0,
+    "clean_timeout_s_note": "Maximum time in CLEAN state (seconds). Forces RETURN if cleaning has not completed within this window — prevents looping indefinitely on a board that cannot be fully cleaned.",
 
     "cleaning_cooldown_s": 5.0,
     "cleaning_cooldown_s_note": "Preflight test only. Minimum seconds between cleaning cycles. Prevents re-triggering on every dirty frame.",

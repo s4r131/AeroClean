@@ -34,6 +34,7 @@ from pymavlink import mavutil
 # ArduCopter custom mode numbers
 _GUIDED_MODE = 4
 _RTL_MODE    = 6
+_LAND_MODE   = 9
 
 _TAKEOFF_SETTLE_S   = 5.0    # seconds to hover after reaching altitude
 _ARM_TIMEOUT_S      = 15.0   # seconds to wait for arm confirmation
@@ -338,6 +339,11 @@ class MAVLinkController:
         """
         print("[FC] Switching to RTL")
         self._set_mode(_RTL_MODE)
+
+    def land(self) -> None:
+        """Switch to LAND mode — descends vertically from current position. GPS-denied safe."""
+        print("[FC] Switching to LAND")
+        self._set_mode(_LAND_MODE)
 
     # ─────────────────────────────────────────────────────────────────────────
     # Telemetry accessors
