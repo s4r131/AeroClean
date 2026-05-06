@@ -2,7 +2,7 @@
 mission.py — AeroClean autonomous drone mission state machine.
 
 Mission flow:
-    IDLE → SCAN → APPROACH → CLEAN → RETURN → DONE
+    IDLE → SCAN → APPROACH → CLEAN → RETREAT → DONE
 
         SCAN timeout ──────────────────────────────┐
         APPROACH board lost ──────┐                │
@@ -51,6 +51,7 @@ class MissionState(Enum):
     SCAN     = auto()
     APPROACH = auto()
     CLEAN    = auto()
+    RETREAT  = auto()   # fly back in body frame, then land in place
     RETURN   = auto()
     ABORTED  = auto()   # terminal — error
     DONE     = auto()   # terminal — success
@@ -97,6 +98,8 @@ class Mission:
         self._cfg_cautious_speed    = float(m["approach_cautious_speed_ms"])
         self._cfg_pump_duration     = float(m["pump_duration_s"])
         self._cfg_clean_timeout     = float(m.get("clean_timeout_s", 30.0))
+        self._cfg_retreat_dist      = float(m.get("post_clean_retreat_m", 0.3))
+        self._cfg_retreat_speed     = float(m.get("post_clean_retreat_speed_ms", 0.3))
         self._cfg_frame_w           = int(m["frame_width_px"])
         self._cfg_frame_h           = int(m["frame_height_px"])
         self._cfg_display           = bool(cfg.get("display", False))
@@ -144,6 +147,11 @@ class Mission:
 
         # CLEAN state
         self._clean_start_time: float | None = None
+
+        # RETREAT state
+        self._retreat_start_time: float | None = None
+        self._retreat_duration:   float        = 0.0
+        self._retreat_landing:    bool         = False
 
         # RETURN state
         self._return_initiated: bool = False
@@ -225,6 +233,7 @@ class Mission:
             MissionState.SCAN:     self._tick_scan,
             MissionState.APPROACH: self._tick_approach,
             MissionState.CLEAN:    self._tick_clean,
+            MissionState.RETREAT:  self._tick_retreat,
             MissionState.RETURN:   self._tick_return,
         }
         handler = dispatch.get(self._state)
@@ -386,16 +395,43 @@ class Mission:
         self._pump.spray(self._cfg_pump_duration)
         print("[MISSION] CLEAN — wiping")
         self._wiper.wipe()
-        print("[MISSION] Cleaning done → RETURN")
+        print("[MISSION] Cleaning done → RETREAT")
         self._clean_start_time = None
-        self._state = MissionState.RETURN
+        self._state = MissionState.RETREAT
+
+    def _tick_retreat(self, frame) -> None:
+        """Fly straight back in body frame (no yaw), then land in place."""
+        if self._retreat_start_time is None:
+            self._retreat_duration   = self._cfg_retreat_dist / self._cfg_retreat_speed
+            self._retreat_start_time = time.monotonic()
+            self._retreat_landing    = False
+            print(
+                f"[MISSION] RETREAT — flying back {self._cfg_retreat_dist:.2f}m "
+                f"at {self._cfg_retreat_speed:.2f} m/s"
+            )
+
+        if not self._retreat_landing:
+            elapsed = time.monotonic() - self._retreat_start_time
+            if elapsed < self._retreat_duration:
+                self._controller.send_velocity_body(-self._cfg_retreat_speed, 0.0, 0.0, 0.0)
+            else:
+                self._controller.stop_movement()
+                print("[MISSION] Retreat complete — landing in place")
+                self._controller.land()
+                self._retreat_landing = True
+            return
+
+        if self._controller.is_landed():
+            print("[MISSION] Landed → DONE")
+            self._retreat_start_time = None
+            self._state = MissionState.DONE
 
     def _tick_return(self, frame) -> None:
-        """Trigger RTL and wait for landing."""
+        """Land in place and wait for touchdown."""
         if not self._return_initiated:
-            self._controller.rtl()
+            self._controller.land()
             self._return_initiated = True
-            print("[MISSION] RTL initiated — waiting for landing")
+            print("[MISSION] Land initiated — waiting for touchdown")
 
         if self._controller.is_landed():
             print("[MISSION] Landed → DONE")

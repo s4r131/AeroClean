@@ -140,6 +140,12 @@
     "frame_width_px_note": "Frame width used by the approach P controller to compute pixel error from centre. Must match resolution[0] above.",
 
     "frame_height_px": 1200,
-    "frame_height_px_note": "Frame height used by the approach P controller. Must match resolution[1] above."
+    "frame_height_px_note": "Frame height used by the approach P controller. Must match resolution[1] above.",
+
+    "post_clean_retreat_m": 0.3,
+    "post_clean_retreat_m_note": "Distance to fly backwards in body frame after a clean cycle (metres). 0.3 m ≈ 1 foot. Drone does not yaw — moves straight back from cleaning position.",
+
+    "post_clean_retreat_speed_ms": 0.3,
+    "post_clean_retreat_speed_ms_note": "Speed for the post-clean backward retreat (m/s). 0.3 m/s is slow and controlled — gives ~1 second of movement for the default 0.3 m distance."
   }
 }
