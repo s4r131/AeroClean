@@ -116,6 +116,9 @@
     "align_threshold_px": 40,
     "align_threshold_px_note": "Phase 1 tolerance: drone will not move forward until the board centre is within this many pixels of frame centre on both axes.",
 
+    "align_y_offset_px": 0,
+    "align_y_offset_px_note": "Vertical aim offset in pixels. Shifts the target aim point up (negative) or down (positive) to compensate for the wiper arm not being at the camera centre. Tune until the arm lines up with the board when APPROACH reports aligned. 0 = exact frame centre.",
+
     "approach_max_speed_ms": 0.3,
     "approach_max_speed_ms_note": "Hard velocity cap on any axis during approach (m/s). The P controller never exceeds this regardless of distance.",
 

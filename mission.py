@@ -102,6 +102,7 @@ class Mission:
         self._cfg_retreat_speed     = float(m.get("post_clean_retreat_speed_ms", 0.3))
         self._cfg_frame_w           = int(m["frame_width_px"])
         self._cfg_frame_h           = int(m["frame_height_px"])
+        self._cfg_align_y_offset    = int(m.get("align_y_offset_px", 0))
         self._cfg_display           = bool(cfg.get("display", False))
 
         # Sanity check: frame dimensions must match camera resolution or the
@@ -334,7 +335,7 @@ class Mission:
 
         # Pixel error from frame centre
         px_err_x = cx - self._cfg_frame_w / 2
-        px_err_y = cy - self._cfg_frame_h / 2
+        px_err_y = cy - (self._cfg_frame_h / 2) + self._cfg_align_y_offset
 
         # Normalised error [-0.5, +0.5] for the P controller
         err_x = px_err_x / self._cfg_frame_w
