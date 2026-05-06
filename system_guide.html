@@ -1033,9 +1033,9 @@ unzip best_ncnn_model.zip -d best_ncnn_model</pre>
         <tbody>
           <tr><td><code>mavlink_uart</code></td><td><span class="badge bw">null ⚠</span></td><td>UART to ArduPilot FC — confirm with <code>ls -l /dev/ttyAMA*</code></td></tr>
           <tr><td><code>mavlink_baud</code></td><td><code>57600</code></td><td>Must match ArduPilot SERIALx_BAUD</td></tr>
-          <tr><td><code>takeoff_altitude_m</code></td><td><code>1.5</code></td><td>Hover altitude in metres after arming</td></tr>
+          <tr><td><code>takeoff_altitude_m</code></td><td><code>0.3</code></td><td>Hover altitude in metres after arming</td></tr>
           <tr><td><code>scan_yaw_rate_dps</code></td><td><code>20.0</code></td><td>Yaw spin speed during scan (deg/s). 20 = one rotation in 18 s</td></tr>
-          <tr><td><code>scan_timeout_s</code></td><td><code>60.0</code></td><td>Abort scan and RTL if no board found within this time</td></tr>
+          <tr><td><code>scan_timeout_s</code></td><td><code>60.0</code></td><td>Stop scanning and return if no board found within this time</td></tr>
           <tr><td><code>approach_stop_dist_m</code></td><td><code>0.5</code></td><td>Stop when range sensor reads ≤ this. Match to wiper arm reach</td></tr>
           <tr><td><code>approach_kp</code></td><td><code>0.4</code></td><td>P-gain for lateral/vertical centering</td></tr>
           <tr><td><code>approach_kp_forward</code></td><td><code>0.5</code></td><td>Forward gain: <code>vx = kp_forward × (dist − stop_dist)</code></td></tr>
@@ -1043,7 +1043,9 @@ unzip best_ncnn_model.zip -d best_ncnn_model</pre>
           <tr><td><code>approach_max_speed_ms</code></td><td><code>0.3</code></td><td>Hard velocity cap on any axis (m/s)</td></tr>
           <tr><td><code>approach_cautious_speed_ms</code></td><td><code>0.05</code></td><td>Forward creep when range sensor has no reading yet</td></tr>
           <tr><td><code>pump_gpio_pin</code></td><td><span class="badge bw">null ⚠</span></td><td>BCM GPIO pin to pump relay IN</td></tr>
-          <tr><td><code>pump_duration_s</code></td><td><code>5.0</code></td><td>Seconds to run the pump before wiping</td></tr>
+          <tr><td><code>pump_duration_s</code></td><td><code>3.0</code></td><td>Seconds to run the pump before wiping</td></tr>
+          <tr><td><code>detection_model</code></td><td><code>"yolo"</code></td><td>Detection model for SCAN/APPROACH: <code>"yolo"</code> (NCNN, visual) or <code>"ocr"</code> (Tesseract, text-based)</td></tr>
+          <tr><td><code>clean_timeout_s</code></td><td><code>30.0</code></td><td>Max seconds in CLEAN state — forces RETURN if cleaning does not complete in time</td></tr>
           <tr><td><code>frame_width_px</code></td><td><code>1920</code></td><td>Must match <code>resolution[0]</code> — used by approach controller</td></tr>
           <tr><td><code>frame_height_px</code></td><td><code>1080</code></td><td>Must match <code>resolution[1]</code> — used by approach controller</td></tr>
         </tbody>
@@ -1107,16 +1109,16 @@ unzip best_ncnn_model.zip -d best_ncnn_model</pre>
         <div style="font-size:12px;color:#94a3b8;display:flex;gap:16px;flex-wrap:wrap">
           <span>SCAN timeout → RETURN</span>
           <span>Board lost in APPROACH → SCAN</span>
-          <span>Any exception → <span style="color:#ef4444">ABORTED</span></span>
+          <span>Any exception → <span style="color:#ef4444">ABORTED</span> (LAND commanded)</span>
         </div>
       </div>
       <table class="dep-table" style="font-size:12.5px">
         <thead><tr><th>State</th><th>What happens</th></tr></thead>
         <tbody>
           <tr><td><strong>IDLE</strong></td><td>Arms the FC and initiates takeoff to <code>takeoff_altitude_m</code></td></tr>
-          <tr><td><strong>SCAN</strong></td><td>Slow yaw spin at <code>scan_yaw_rate_dps</code>; YOLO runs every frame looking for <code>dirty_board</code></td></tr>
+          <tr><td><strong>SCAN</strong></td><td>Slow yaw spin at <code>scan_yaw_rate_dps</code>; runs the model set by <code>detection_model</code> (<code>yolo</code> or <code>ocr</code>) every frame looking for <code>dirty_board</code></td></tr>
           <tr><td><strong>APPROACH</strong></td><td><strong>Phase 1 — Align:</strong> holds position, corrects lateral/vertical until board is within <code>align_threshold_px</code> of frame centre. <strong>Phase 2 — Approach:</strong> drives forward at <code>vx = kp_forward × (dist − stop_dist)</code>; stops when range sensor reads ≤ <code>approach_stop_dist_m</code></td></tr>
-          <tr><td><strong>CLEAN</strong></td><td>Holds position; activates pump for <code>pump_duration_s</code> seconds, then actuates the wiper arm sweep</td></tr>
+          <tr><td><strong>CLEAN</strong></td><td>Holds position; activates pump for <code>pump_duration_s</code> seconds, then actuates the wiper arm sweep. Forces RETURN after <code>clean_timeout_s</code> if not complete</td></tr>
           <tr><td><strong>RETURN</strong></td><td>Switches ArduPilot to RTL mode; waits for landing</td></tr>
           <tr><td><strong>DONE / ABORTED</strong></td><td>Terminal states — all subsystems shut down cleanly</td></tr>
         </tbody>

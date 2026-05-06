@@ -96,6 +96,7 @@ class Mission:
         self._cfg_max_speed         = float(m["approach_max_speed_ms"])
         self._cfg_cautious_speed    = float(m["approach_cautious_speed_ms"])
         self._cfg_pump_duration     = float(m["pump_duration_s"])
+        self._cfg_clean_timeout     = float(m.get("clean_timeout_s", 30.0))
         self._cfg_frame_w           = int(m["frame_width_px"])
         self._cfg_frame_h           = int(m["frame_height_px"])
         self._cfg_display           = bool(cfg.get("display", False))
@@ -111,7 +112,16 @@ class Mission:
             )
 
         self._camera     = Camera(config_path)
-        self._yolo       = YOLOModel(config_path)
+        self._use_ocr    = m.get("detection_model", "yolo") == "ocr"
+        if self._use_ocr:
+            from ocr_model import OCRModel
+            self._ocr  = OCRModel(config_path)
+            self._yolo = None
+            print("[MISSION] Detection model: OCR (Tesseract)")
+        else:
+            self._yolo = YOLOModel(config_path)
+            self._ocr  = None
+            print("[MISSION] Detection model: YOLO NCNN")
         self._controller = MAVLinkController(m["mavlink_uart"], int(m["mavlink_baud"]))
         self._range      = self._init_range_sensor(cfg)
         pump_pin = m.get("pump_gpio_pin")
@@ -131,6 +141,9 @@ class Mission:
         self._target_bbox: list | None  = None
         self._approach_lost_count: int  = 0
         self._approach_phase: str       = "ALIGN"   # "ALIGN" or "APPROACH"
+
+        # CLEAN state
+        self._clean_start_time: float | None = None
 
         # RETURN state
         self._return_initiated: bool = False
@@ -234,7 +247,7 @@ class Mission:
         print("[MISSION] → SCAN")
 
     def _tick_scan(self, frame) -> None:
-        """Spin and search for a dirty board with YOLO."""
+        """Spin and search for a dirty board using the configured detection model."""
         if self._scan_start_time is None:
             self._scan_start_time = time.monotonic()
             print("[MISSION] SCAN started — yawing to search for dirty board")
@@ -242,8 +255,7 @@ class Mission:
         # Keep yawing
         self._controller.send_velocity_body(0.0, 0.0, 0.0, self._cfg_scan_yaw_rate)
 
-        # Run detection
-        detection, annotated = self._yolo.run(frame)
+        detection, annotated = self._run_detector(frame)
 
         if self._cfg_display:
             cv2.imshow("AeroClean Mission", annotated)
@@ -285,7 +297,7 @@ class Mission:
         Falls back to SCAN if the board is lost for _APPROACH_LOST_LIMIT frames.
         """
         # ── Update YOLO detection ───────────────────────────────────────────
-        detection, annotated = self._yolo.run(frame)
+        detection, annotated = self._run_detector(frame)
 
         if self._cfg_display:
             cv2.imshow("AeroClean Mission", annotated)
@@ -360,11 +372,22 @@ class Mission:
 
     def _tick_clean(self, frame) -> None:
         """Spray then wipe: activate pump, then actuate the wiper arm."""
+        if self._clean_start_time is None:
+            self._clean_start_time = time.monotonic()
+
+        elapsed = time.monotonic() - self._clean_start_time
+        if elapsed > self._cfg_clean_timeout:
+            print(f"[MISSION] Clean timeout ({self._cfg_clean_timeout:.0f}s) — returning regardless")
+            self._clean_start_time = None
+            self._state = MissionState.RETURN
+            return
+
         print("[MISSION] CLEAN — spraying")
         self._pump.spray(self._cfg_pump_duration)
         print("[MISSION] CLEAN — wiping")
         self._wiper.wipe()
         print("[MISSION] Cleaning done → RETURN")
+        self._clean_start_time = None
         self._state = MissionState.RETURN
 
     def _tick_return(self, frame) -> None:
@@ -382,9 +405,28 @@ class Mission:
     # Helpers
     # ─────────────────────────────────────────────────────────────────────────
 
+    def _run_detector(self, frame):
+        """Run the configured detection model. Always returns (detection | None, annotated)."""
+        if self._use_ocr:
+            dirty, annotated = self._ocr.run(frame)
+            if dirty:
+                h, w = frame.shape[:2]
+                detection = {
+                    "class_name": "dirty_board",
+                    "confidence": 0.0,
+                    "bbox": [w // 4, h // 4, 3 * w // 4, 3 * h // 4],
+                }
+                return detection, annotated
+            return None, annotated
+        return self._yolo.run(frame)
+
     def _abort(self, reason: str) -> None:
         print(f"[MISSION] ABORT — {reason}")
         self._state = MissionState.ABORTED
+        try:
+            self._controller.land()
+        except Exception:
+            pass
 
     def _shutdown(self) -> None:
         """Safe teardown regardless of mission outcome."""
